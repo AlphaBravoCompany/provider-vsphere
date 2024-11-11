@@ -2,7 +2,7 @@
 # Setup Project
 
 PROJECT_NAME ?= provider-vsphere
-PROJECT_REPO ?= github.com/ankasoftco/$(PROJECT_NAME)
+PROJECT_REPO ?= github.com/kirillinda/$(PROJECT_NAME)
 
 export TERRAFORM_VERSION ?= 1.5.5
 

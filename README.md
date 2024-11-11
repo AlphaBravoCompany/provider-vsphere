@@ -8,7 +8,7 @@ vSphere API.
 ## Getting Started
 
 Install the provider by using the following command after changing the image tag
-to the [latest release](https://marketplace.upbound.io/providers/ankasoftco/provider-vsphere):
+to the [latest release](https://marketplace.upbound.io/providers/kirillinda/provider-vsphere):
 ```
 up ctp provider install ankasoftco/provider-vsphere:v0.1.0
 ```
@@ -27,7 +27,7 @@ EOF
 
 Notice that in this example Provider resource is referencing ControllerConfig with debug enabled.
 
-You can see the API reference [here](https://doc.crds.dev/github.com/ankasoftco/provider-vsphere).
+You can see the API reference [here](https://doc.crds.dev/github.com/kirillinda/provider-vsphere).
 
 ## Developing
 
@@ -57,4 +57,4 @@ make build
 ## Report a Bug
 
 For filing bugs, suggesting improvements, or requesting new features, please
-open an [issue](https://github.com/ankasoftco/provider-vsphere/issues).
+open an [issue](https://github.com/kirillinda/provider-vsphere/issues).

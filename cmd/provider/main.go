@@ -25,12 +25,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/ankasoftco/provider-vsphere/apis"
-	"github.com/ankasoftco/provider-vsphere/apis/v1alpha1"
-	"github.com/ankasoftco/provider-vsphere/config"
-	"github.com/ankasoftco/provider-vsphere/internal/clients"
-	"github.com/ankasoftco/provider-vsphere/internal/controller"
-	"github.com/ankasoftco/provider-vsphere/internal/features"
+	"github.com/kirillinda/provider-vsphere/apis"
+	"github.com/kirillinda/provider-vsphere/apis/v1alpha1"
+	"github.com/kirillinda/provider-vsphere/config"
+	"github.com/kirillinda/provider-vsphere/internal/clients"
+	"github.com/kirillinda/provider-vsphere/internal/controller"
+	"github.com/kirillinda/provider-vsphere/internal/features"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/ankasoftco/provider-vsphere
+module github.com/kirillinda/provider-vsphere
 
 go 1.19
 

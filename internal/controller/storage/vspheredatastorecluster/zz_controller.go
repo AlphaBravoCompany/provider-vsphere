@@ -18,8 +18,8 @@ import (
 	"github.com/upbound/upjet/pkg/terraform"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	v1alpha1 "github.com/ankasoftco/provider-vsphere/apis/storage/v1alpha1"
-	features "github.com/ankasoftco/provider-vsphere/internal/features"
+	v1alpha1 "github.com/kirillinda/provider-vsphere/apis/storage/v1alpha1"
+	features "github.com/kirillinda/provider-vsphere/internal/features"
 )
 
 // Setup adds a controller that reconciles VSphereDatastoreCluster managed resources.
