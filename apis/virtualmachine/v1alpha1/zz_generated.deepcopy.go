@@ -2164,10 +2164,30 @@ func (in *VSphereVirtualDiskParameters) DeepCopyInto(out *VSphereVirtualDiskPara
 		*out = new(string)
 		**out = **in
 	}
+	if in.DatacenterRef != nil {
+		in, out := &in.DatacenterRef, &out.DatacenterRef
+		*out = new(v1.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.DatacenterSelector != nil {
+		in, out := &in.DatacenterSelector, &out.DatacenterSelector
+		*out = new(v1.Selector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Datastore != nil {
 		in, out := &in.Datastore, &out.Datastore
 		*out = new(string)
 		**out = **in
+	}
+	if in.DatastoreRef != nil {
+		in, out := &in.DatastoreRef, &out.DatastoreRef
+		*out = new(v1.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.DatastoreSelector != nil {
+		in, out := &in.DatastoreSelector, &out.DatastoreSelector
+		*out = new(v1.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Size != nil {
 		in, out := &in.Size, &out.Size

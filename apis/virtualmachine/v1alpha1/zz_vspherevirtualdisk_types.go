@@ -39,11 +39,31 @@ type VSphereVirtualDiskParameters struct {
 	// +kubebuilder:validation:Optional
 	CreateDirectories *bool `json:"createDirectories,omitempty" tf:"create_directories,omitempty"`
 
+	// +crossplane:generate:reference:type=github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter
+	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("name", true)
 	// +kubebuilder:validation:Optional
 	Datacenter *string `json:"datacenter,omitempty" tf:"datacenter,omitempty"`
 
+	// Reference to a VSphereDatacenter in inventory to populate datacenter.
+	// +kubebuilder:validation:Optional
+	DatacenterRef *v1.Reference `json:"datacenterRef,omitempty" tf:"-"`
+
+	// Selector for a VSphereDatacenter in inventory to populate datacenter.
+	// +kubebuilder:validation:Optional
+	DatacenterSelector *v1.Selector `json:"datacenterSelector,omitempty" tf:"-"`
+
+	// +crossplane:generate:reference:type=github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1.VSphereVmfsDatastore
+	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("id", true)
 	// +kubebuilder:validation:Optional
 	Datastore *string `json:"datastore,omitempty" tf:"datastore,omitempty"`
+
+	// Reference to a VSphereVmfsDatastore in inventory to populate datastore.
+	// +kubebuilder:validation:Optional
+	DatastoreRef *v1.Reference `json:"datastoreRef,omitempty" tf:"-"`
+
+	// Selector for a VSphereVmfsDatastore in inventory to populate datastore.
+	// +kubebuilder:validation:Optional
+	DatastoreSelector *v1.Selector `json:"datastoreSelector,omitempty" tf:"-"`
 
 	// +kubebuilder:validation:Optional
 	Size *float64 `json:"size,omitempty" tf:"size,omitempty"`
@@ -79,7 +99,6 @@ type VSphereVirtualDiskStatus struct {
 type VSphereVirtualDisk struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	// +kubebuilder:validation:XValidation:rule="self.managementPolicy == 'ObserveOnly' || has(self.forProvider.datastore)",message="datastore is a required parameter"
 	// +kubebuilder:validation:XValidation:rule="self.managementPolicy == 'ObserveOnly' || has(self.forProvider.size)",message="size is a required parameter"
 	// +kubebuilder:validation:XValidation:rule="self.managementPolicy == 'ObserveOnly' || has(self.forProvider.vmdkPath)",message="vmdkPath is a required parameter"
 	Spec   VSphereVirtualDiskSpec   `json:"spec"`
