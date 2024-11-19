@@ -152,8 +152,8 @@ spec:
                   datastore:
                     type: string
                   datastoreRef:
-                    description: Reference to a VSphereVmfsDatastore in inventory
-                      to populate datastore.
+                    description: Reference to a VSphereVmfsDatastore in storage to
+                      populate datastore.
                     properties:
                       name:
                         description: Name of the referenced object.
@@ -187,8 +187,8 @@ spec:
                     - name
                     type: object
                   datastoreSelector:
-                    description: Selector for a VSphereVmfsDatastore in inventory
-                      to populate datastore.
+                    description: Selector for a VSphereVmfsDatastore in storage to
+                      populate datastore.
                     properties:
                       matchControllerRef:
                         description: MatchControllerRef ensures an object with the

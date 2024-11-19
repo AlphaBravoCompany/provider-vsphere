@@ -3053,6 +3053,16 @@ func (in *VSphereVirtualMachineParameters) DeepCopyInto(out *VSphereVirtualMachi
 		*out = new(string)
 		**out = **in
 	}
+	if in.DatastoreIDRef != nil {
+		in, out := &in.DatastoreIDRef, &out.DatastoreIDRef
+		*out = new(v1.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.DatastoreIDSelector != nil {
+		in, out := &in.DatastoreIDSelector, &out.DatastoreIDSelector
+		*out = new(v1.Selector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Disk != nil {
 		in, out := &in.Disk, &out.Disk
 		*out = make([]DiskParameters, len(*in))
@@ -3250,6 +3260,16 @@ func (in *VSphereVirtualMachineParameters) DeepCopyInto(out *VSphereVirtualMachi
 		in, out := &in.ResourcePoolID, &out.ResourcePoolID
 		*out = new(string)
 		**out = **in
+	}
+	if in.ResourcePoolIDRef != nil {
+		in, out := &in.ResourcePoolIDRef, &out.ResourcePoolIDRef
+		*out = new(v1.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ResourcePoolIDSelector != nil {
+		in, out := &in.ResourcePoolIDSelector, &out.ResourcePoolIDSelector
+		*out = new(v1.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.RunToolsScriptsAfterPowerOn != nil {
 		in, out := &in.RunToolsScriptsAfterPowerOn, &out.RunToolsScriptsAfterPowerOn

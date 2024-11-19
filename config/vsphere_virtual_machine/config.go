@@ -8,13 +8,13 @@ func Configure(p *config.Provider) {
 		r.ShortGroup = "virtualmachine"
 		r.Kind = "VSphereVirtualMachine"
 		r.Version = "v1alpha1"
-		r.References["datacenter"] = config.Reference{
+		r.References["resource_pool_id"] = config.Reference{
 			Type:      "github.com/kirillinda/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("name", true)`,
+			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
-		r.References["datastore"] = config.Reference{
+		r.References["datastore_id"] = config.Reference{
 			Type:      "github.com/kirillinda/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("id", true)`,
+			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
 	})
 

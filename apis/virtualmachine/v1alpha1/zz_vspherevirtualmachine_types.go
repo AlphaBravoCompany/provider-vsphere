@@ -860,8 +860,18 @@ type VSphereVirtualMachineParameters struct {
 	DatastoreClusterID *string `json:"datastoreClusterId,omitempty" tf:"datastore_cluster_id,omitempty"`
 
 	// The ID of the virtual machine's datastore. The virtual machine configuration is placed here, along with any virtual disks that are created without datastores.
+	// +crossplane:generate:reference:type=github.com/kirillinda/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
+	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	DatastoreID *string `json:"datastoreId,omitempty" tf:"datastore_id,omitempty"`
+
+	// Reference to a VSphereVmfsDatastore in storage to populate datastoreId.
+	// +kubebuilder:validation:Optional
+	DatastoreIDRef *v1.Reference `json:"datastoreIdRef,omitempty" tf:"-"`
+
+	// Selector for a VSphereVmfsDatastore in storage to populate datastoreId.
+	// +kubebuilder:validation:Optional
+	DatastoreIDSelector *v1.Selector `json:"datastoreIdSelector,omitempty" tf:"-"`
 
 	// A specification for a virtual disk device on this virtual machine.
 	// +kubebuilder:validation:Optional
@@ -996,8 +1006,18 @@ type VSphereVirtualMachineParameters struct {
 	ReplaceTrigger *string `json:"replaceTrigger,omitempty" tf:"replace_trigger,omitempty"`
 
 	// The ID of a resource pool to put the virtual machine in.
+	// +crossplane:generate:reference:type=github.com/kirillinda/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster
+	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	ResourcePoolID *string `json:"resourcePoolId,omitempty" tf:"resource_pool_id,omitempty"`
+
+	// Reference to a VSphereComputeCluster in hostandclustermanagement to populate resourcePoolId.
+	// +kubebuilder:validation:Optional
+	ResourcePoolIDRef *v1.Reference `json:"resourcePoolIdRef,omitempty" tf:"-"`
+
+	// Selector for a VSphereComputeCluster in hostandclustermanagement to populate resourcePoolId.
+	// +kubebuilder:validation:Optional
+	ResourcePoolIDSelector *v1.Selector `json:"resourcePoolIdSelector,omitempty" tf:"-"`
 
 	// Enable the run of scripts after virtual machine power-on when VMware Tools is installed.
 	// +kubebuilder:validation:Optional
@@ -1214,7 +1234,6 @@ type VSphereVirtualMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// +kubebuilder:validation:XValidation:rule="self.managementPolicy == 'ObserveOnly' || has(self.forProvider.name)",message="name is a required parameter"
-	// +kubebuilder:validation:XValidation:rule="self.managementPolicy == 'ObserveOnly' || has(self.forProvider.resourcePoolId)",message="resourcePoolId is a required parameter"
 	Spec   VSphereVirtualMachineSpec   `json:"spec"`
 	Status VSphereVirtualMachineStatus `json:"status,omitempty"`
 }

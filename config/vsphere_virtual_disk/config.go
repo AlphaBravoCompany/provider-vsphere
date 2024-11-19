@@ -11,11 +11,11 @@ func Configure(p *config.Provider) {
 		r.Version = "v1alpha1"
 		r.References["datacenter"] = config.Reference{
 			Type:      "github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("name", true)`,
+			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 		r.References["datastore"] = config.Reference{
-			Type:      "github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1.VSphereVmfsDatastore",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("id", true)`,
+			Type:      "github.com/kirillinda/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
+			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 	})
 
