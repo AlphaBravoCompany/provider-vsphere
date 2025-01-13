@@ -7,6 +7,7 @@ package v1alpha1
 
 import (
 	"context"
+
 	reference "github.com/crossplane/crossplane-runtime/pkg/reference"
 	v1alpha12 "github.com/kirillinda/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
 	v1alpha1 "github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1"

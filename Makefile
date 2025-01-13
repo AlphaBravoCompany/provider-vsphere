@@ -8,10 +8,10 @@ export TERRAFORM_VERSION ?= 1.5.5
 
 export TERRAFORM_PROVIDER_SOURCE ?= hashicorp/vsphere
 export TERRAFORM_PROVIDER_REPO ?= https://github.com/hashicorp/terraform-provider-vsphere
-export TERRAFORM_PROVIDER_VERSION ?= 2.5.1
+export TERRAFORM_PROVIDER_VERSION ?= 2.6.1
 export TERRAFORM_PROVIDER_DOWNLOAD_NAME ?= terraform-provider-vsphere
 export TERRAFORM_PROVIDER_DOWNLOAD_URL_PREFIX ?= https://releases.hashicorp.com/$(TERRAFORM_PROVIDER_DOWNLOAD_NAME)/$(TERRAFORM_PROVIDER_VERSION)
-export TERRAFORM_NATIVE_PROVIDER_BINARY ?= terraform-provider-vsphere_v3.1.0_x5
+export TERRAFORM_NATIVE_PROVIDER_BINARY ?= terraform-provider-vsphere_v2.6.1
 export TERRAFORM_DOCS_PATH ?= docs/resources
 
 
