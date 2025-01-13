@@ -195,7 +195,7 @@ spec:
                       back to the default setting when the port disconnects.
                     type: boolean
                   portNameFormat:
-                    description: A vsphere string to use when creating ports in the
+                    description: A template string to use when creating ports in the
                       portgroup.
                     type: string
                   portPrivateSecondaryVlanId:
@@ -597,7 +597,7 @@ spec:
                       back to the default setting when the port disconnects.
                     type: boolean
                   portNameFormat:
-                    description: A vsphere string to use when creating ports in the
+                    description: A template string to use when creating ports in the
                       portgroup.
                     type: string
                   portPrivateSecondaryVlanId:

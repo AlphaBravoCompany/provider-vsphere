@@ -1,4 +1,4 @@
-module github.com/kirillinda/provider-vsphere
+module github.com/Kumlin/provider-vsphere
 
 go 1.18
 

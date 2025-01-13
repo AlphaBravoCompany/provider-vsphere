@@ -60,8 +60,8 @@ type CloneObservation struct {
 	// Mapping of ovf storage to the datastores to use in vSphere.
 	OvfStorageMap map[string]*string `json:"ovfStorageMap,omitempty" tf:"ovf_storage_map,omitempty"`
 
-	// The UUID of the source virtual machine or vsphere.
-	TemplateUUID *string `json:"vsphereUuid,omitempty" tf:"vsphere_uuid,omitempty"`
+	// The UUID of the source virtual machine or template.
+	TemplateUUID *string `json:"templateUuid,omitempty" tf:"template_uuid,omitempty"`
 
 	// The timeout, in minutes, to wait for the virtual machine clone to complete.
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
@@ -85,9 +85,9 @@ type CloneParameters struct {
 	// +kubebuilder:validation:Optional
 	OvfStorageMap map[string]*string `json:"ovfStorageMap,omitempty" tf:"ovf_storage_map,omitempty"`
 
-	// The UUID of the source virtual machine or vsphere.
+	// The UUID of the source virtual machine or template.
 	// +kubebuilder:validation:Required
-	TemplateUUID *string `json:"vsphereUuid" tf:"vsphere_uuid,omitempty"`
+	TemplateUUID *string `json:"templateUuid" tf:"template_uuid,omitempty"`
 
 	// The timeout, in minutes, to wait for the virtual machine clone to complete.
 	// +kubebuilder:validation:Optional
@@ -575,7 +575,7 @@ type VSphereVirtualMachineObservation struct {
 	// A unique identifier for a given version of the last configuration applied, such the timestamp of the last update to the configuration.
 	ChangeVersion *string `json:"changeVersion,omitempty" tf:"change_version,omitempty"`
 
-	// A specification for cloning a virtual machine from vsphere.
+	// A specification for cloning a virtual machine from template.
 	Clone []CloneObservation `json:"clone,omitempty" tf:"clone,omitempty"`
 
 	// A list of custom attributes to set on this resource.
@@ -690,7 +690,7 @@ type VSphereVirtualMachineObservation struct {
 	// The number of virtual processors to assign to this virtual machine.
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
 
-	// A specification for deploying a virtual machine from ovf/ova vsphere.
+	// A specification for deploying a virtual machine from ovf/ova template.
 	OvfDeploy []OvfDeployObservation `json:"ovfDeploy,omitempty" tf:"ovf_deploy,omitempty"`
 
 	// A list of PCI passthrough devices
@@ -843,7 +843,7 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	Cdrom []CdromParameters `json:"cdrom,omitempty" tf:"cdrom,omitempty"`
 
-	// A specification for cloning a virtual machine from vsphere.
+	// A specification for cloning a virtual machine from template.
 	// +kubebuilder:validation:Optional
 	Clone []CloneParameters `json:"clone,omitempty" tf:"clone,omitempty"`
 
@@ -989,7 +989,7 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
 
-	// A specification for deploying a virtual machine from ovf/ova vsphere.
+	// A specification for deploying a virtual machine from ovf/ova template.
 	// +kubebuilder:validation:Optional
 	OvfDeploy []OvfDeployParameters `json:"ovfDeploy,omitempty" tf:"ovf_deploy,omitempty"`
 
@@ -1110,13 +1110,13 @@ type VSphereVirtualMachineParameters struct {
 
 type VappObservation struct {
 
-	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF vspheres which have customizable vApp properties.
+	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF templates which have customizable vApp properties.
 	Properties map[string]*string `json:"properties,omitempty" tf:"properties,omitempty"`
 }
 
 type VappParameters struct {
 
-	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF vspheres which have customizable vApp properties.
+	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF templates which have customizable vApp properties.
 	// +kubebuilder:validation:Optional
 	Properties map[string]*string `json:"properties,omitempty" tf:"properties,omitempty"`
 }

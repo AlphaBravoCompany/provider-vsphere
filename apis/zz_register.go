@@ -10,15 +10,15 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	v1alpha1 "github.com/kirillinda/provider-vsphere/apis/administration/v1alpha1"
-	v1alpha1hostandclustermanagement "github.com/kirillinda/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
-	v1alpha1inventory "github.com/kirillinda/provider-vsphere/apis/inventory/v1alpha1"
-	v1alpha1networking "github.com/kirillinda/provider-vsphere/apis/networking/v1alpha1"
-	v1alpha1security "github.com/kirillinda/provider-vsphere/apis/security/v1alpha1"
-	v1alpha1storage "github.com/kirillinda/provider-vsphere/apis/storage/v1alpha1"
-	v1alpha1apis "github.com/kirillinda/provider-vsphere/apis/v1alpha1"
-	v1beta1 "github.com/kirillinda/provider-vsphere/apis/v1beta1"
-	v1alpha1virtualmachine "github.com/kirillinda/provider-vsphere/apis/virtualmachine/v1alpha1"
+	v1alpha1 "github.com/Kumlin/provider-vsphere/apis/administration/v1alpha1"
+	v1alpha1hostandclustermanagement "github.com/Kumlin/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
+	v1alpha1inventory "github.com/Kumlin/provider-vsphere/apis/inventory/v1alpha1"
+	v1alpha1networking "github.com/Kumlin/provider-vsphere/apis/networking/v1alpha1"
+	v1alpha1security "github.com/Kumlin/provider-vsphere/apis/security/v1alpha1"
+	v1alpha1storage "github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1"
+	v1alpha1apis "github.com/Kumlin/provider-vsphere/apis/v1alpha1"
+	v1beta1 "github.com/Kumlin/provider-vsphere/apis/v1beta1"
+	v1alpha1virtualmachine "github.com/Kumlin/provider-vsphere/apis/virtualmachine/v1alpha1"
 )
 
 func init() {

@@ -107,7 +107,7 @@ spec:
                     type: array
                   clone:
                     description: A specification for cloning a virtual machine from
-                      vsphere.
+                      template.
                     items:
                       properties:
                         customize:
@@ -370,15 +370,15 @@ spec:
                           description: Mapping of ovf storage to the datastores to
                             use in vSphere.
                           type: object
-                        vsphereUuid:
-                          description: The UUID of the source virtual machine or vsphere.
+                        templateUuid:
+                          description: The UUID of the source virtual machine or template.
                           type: string
                         timeout:
                           description: The timeout, in minutes, to wait for the virtual
                             machine clone to complete.
                           type: number
                       required:
-                      - vsphereUuid
+                      - templateUuid
                       type: object
                     type: array
                   cpuHotAddEnabled:
@@ -745,7 +745,7 @@ spec:
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
-                      ovf/ova vsphere.
+                      ovf/ova template.
                     items:
                       properties:
                         allowUnverifiedSslCert:
@@ -957,7 +957,7 @@ spec:
                           additionalProperties:
                             type: string
                           description: A map of customizable vApp properties and their
-                            values. Allows customization of VMs cloned from OVF vspheres
+                            values. Allows customization of VMs cloned from OVF templates
                             which have customizable vApp properties.
                           type: object
                       type: object
@@ -1236,7 +1236,7 @@ spec:
                     type: string
                   clone:
                     description: A specification for cloning a virtual machine from
-                      vsphere.
+                      template.
                     items:
                       properties:
                         customize:
@@ -1404,8 +1404,8 @@ spec:
                           description: Mapping of ovf storage to the datastores to
                             use in vSphere.
                           type: object
-                        vsphereUuid:
-                          description: The UUID of the source virtual machine or vsphere.
+                        templateUuid:
+                          description: The UUID of the source virtual machine or template.
                           type: string
                         timeout:
                           description: The timeout, in minutes, to wait for the virtual
@@ -1736,7 +1736,7 @@ spec:
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
-                      ovf/ova vsphere.
+                      ovf/ova template.
                     items:
                       properties:
                         allowUnverifiedSslCert:
@@ -1882,7 +1882,7 @@ spec:
                           additionalProperties:
                             type: string
                           description: A map of customizable vApp properties and their
-                            values. Allows customization of VMs cloned from OVF vspheres
+                            values. Allows customization of VMs cloned from OVF templates
                             which have customizable vApp properties.
                           type: object
                       type: object

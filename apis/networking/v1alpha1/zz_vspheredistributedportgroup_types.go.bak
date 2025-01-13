@@ -119,7 +119,7 @@ type VSphereDistributedPortGroupObservation struct {
 	// Reset the setting of any ports in this portgroup back to the default setting when the port disconnects.
 	PortConfigResetAtDisconnect *bool `json:"portConfigResetAtDisconnect,omitempty" tf:"port_config_reset_at_disconnect,omitempty"`
 
-	// A vsphere string to use when creating ports in the portgroup.
+	// A template string to use when creating ports in the portgroup.
 	PortNameFormat *string `json:"portNameFormat,omitempty" tf:"port_name_format,omitempty"`
 
 	// The secondary VLAN ID for this port.
@@ -292,7 +292,7 @@ type VSphereDistributedPortGroupParameters struct {
 	// +kubebuilder:validation:Optional
 	PortConfigResetAtDisconnect *bool `json:"portConfigResetAtDisconnect,omitempty" tf:"port_config_reset_at_disconnect,omitempty"`
 
-	// A vsphere string to use when creating ports in the portgroup.
+	// A template string to use when creating ports in the portgroup.
 	// +kubebuilder:validation:Optional
 	PortNameFormat *string `json:"portNameFormat,omitempty" tf:"port_name_format,omitempty"`
 
