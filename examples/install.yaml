@@ -3,4 +3,4 @@ kind: Provider
 metadata:
   name: provider-vsphere
 spec:
-  package: ankasoftco/provider-vsphere:v0.1.0
+  package: docker.io/andrewkumlin/provider-vsphere-amd64:latest

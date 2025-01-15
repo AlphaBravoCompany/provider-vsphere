@@ -1,17 +1,11 @@
 # Provider vSphere
 
+This is a fork of the [Ankasoft vSphere provider](https://github.com/ankasoftco/provider-vsphere) Utilizing a higher version of the [Terraform vSphere provider](https://github.com/hashicorp/terraform-provider-vsphere) In order to capture bugfixes related to deploying OVF/OVA files directly to an ESXi host.
+
 `provider-vsphere` is a [Crossplane](https://crossplane.io/) provider that
 is built using [Upjet](https://github.com/upbound/upjet) code
 generation tools and exposes XRM-conformant managed resources for the
 vSphere API.
-
-## Getting Started
-
-Install the provider by using the following command after changing the image tag
-to the [latest release](https://marketplace.upbound.io/providers/kirillinda/provider-vsphere):
-```
-up ctp provider install ankasoftco/provider-vsphere:v0.1.0
-```
 
 Alternatively, you can use declarative installation:
 ```
@@ -21,13 +15,12 @@ kind: Provider
 metadata:
   name: provider-vsphere
 spec:
-  package: ankasoftco/provider-vsphere:v0.1.0
+  package:docker.io/andrewkumlin/provider-vsphere-amd64:latest
 EOF
 ```
 
 Notice that in this example Provider resource is referencing ControllerConfig with debug enabled.
 
-You can see the API reference [here](https://doc.crds.dev/github.com/Kumlin/provider-vsphere).
 
 ## Developing
 

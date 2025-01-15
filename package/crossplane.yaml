@@ -3,7 +3,7 @@ kind: Provider
 metadata:
   name: provider-vsphere
   annotations:
-    meta.crossplane.io/maintainer: Crossplane Maintainers <support@ankasoft.co>
+    meta.crossplane.io/maintainer: Crossplane Maintainers https://github.com/Kumlin/provider-vsphere/issues
     meta.crossplane.io/source: github.com/Kumlin/provider-vsphere
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
@@ -15,5 +15,5 @@ metadata:
       If you encounter an issue please reach out on
       [slack.crossplane.io](https://slack.crossplane.io) and create an issue in
       the
-      [ankasoftco/provider-vsphere](https://github.com/Kumlin/provider-vsphere)
+      [Kumlin/provider-vsphere](https://github.com/Kumlin/provider-vsphere)
       repo.
