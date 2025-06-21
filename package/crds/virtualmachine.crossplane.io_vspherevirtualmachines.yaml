@@ -107,12 +107,32 @@ spec:
                     type: array
                   clone:
                     description: A specification for cloning a virtual machine from
-                      vsphere.
+                      template.
                     items:
                       properties:
+                        customizationSpec:
+                          description: The customization specification for the virtual
+                            machine post-clone.
+                          items:
+                            properties:
+                              id:
+                                description: The unique identifier of the customization
+                                  specification is its name and is unique per vCenter
+                                  Server instance.
+                                type: string
+                              timeout:
+                                description: 'The amount of time, in minutes, to wait
+                                  for guest OS customization to complete before returning
+                                  with an error. Setting this value to 0 or a negative
+                                  value skips the waiter. Default: 10.'
+                                type: number
+                            required:
+                            - id
+                            type: object
+                          type: array
                         customize:
-                          description: The customization spec for this clone. This
-                            allows the user to configure the virtual machine post-clone.
+                          description: The customization specification for the virtual
+                            machine post-clone.
                           items:
                             properties:
                               dnsServerList:
@@ -220,10 +240,10 @@ spec:
                                   type: object
                                 type: array
                               timeout:
-                                description: The amount of time, in minutes, to wait
+                                description: 'The amount of time, in minutes, to wait
                                   for guest OS customization to complete before returning
                                   with an error. Setting this value to 0 or a negative
-                                  value skips the waiter.
+                                  value skips the waiter. Default: 10.'
                                 type: number
                               windowsOptions:
                                 description: A list of configuration options specific
@@ -370,15 +390,15 @@ spec:
                           description: Mapping of ovf storage to the datastores to
                             use in vSphere.
                           type: object
-                        vsphereUuid:
-                          description: The UUID of the source virtual machine or vsphere.
+                        templateUuid:
+                          description: The UUID of the source virtual machine or template.
                           type: string
                         timeout:
                           description: The timeout, in minutes, to wait for the virtual
                             machine clone to complete.
                           type: number
                       required:
-                      - vsphereUuid
+                      - templateUuid
                       type: object
                     type: array
                   cpuHotAddEnabled:
@@ -697,7 +717,7 @@ spec:
                       properties:
                         adapterType:
                           description: The controller type. Can be one of e1000, e1000e,
-                            vmxnet3, or vrdma.
+                            sriov, vmxnet3, or vrdma.
                           type: string
                         bandwidthLimit:
                           description: The upper bandwidth limit of this network interface,
@@ -726,6 +746,10 @@ spec:
                         ovfMapping:
                           description: Mapping of network interface to OVF network.
                           type: string
+                        physicalFunction:
+                          description: The ID of the Physical SR-IOV NIC to attach
+                            to, e.g. '0000:d8:00.0'
+                          type: string
                         useStaticMac:
                           description: If true, the mac_address field is treated as
                             a static MAC address and set accordingly.
@@ -745,7 +769,7 @@ spec:
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
-                      ovf/ova vsphere.
+                      ovf/ova template.
                     items:
                       properties:
                         allowUnverifiedSslCert:
@@ -957,7 +981,7 @@ spec:
                           additionalProperties:
                             type: string
                           description: A map of customizable vApp properties and their
-                            values. Allows customization of VMs cloned from OVF vspheres
+                            values. Allows customization of VMs cloned from OVF templates
                             which have customizable vApp properties.
                           type: object
                       type: object
@@ -1236,12 +1260,30 @@ spec:
                     type: string
                   clone:
                     description: A specification for cloning a virtual machine from
-                      vsphere.
+                      template.
                     items:
                       properties:
+                        customizationSpec:
+                          description: The customization specification for the virtual
+                            machine post-clone.
+                          items:
+                            properties:
+                              id:
+                                description: The unique identifier of the customization
+                                  specification is its name and is unique per vCenter
+                                  Server instance.
+                                type: string
+                              timeout:
+                                description: 'The amount of time, in minutes, to wait
+                                  for guest OS customization to complete before returning
+                                  with an error. Setting this value to 0 or a negative
+                                  value skips the waiter. Default: 10.'
+                                type: number
+                            type: object
+                          type: array
                         customize:
-                          description: The customization spec for this clone. This
-                            allows the user to configure the virtual machine post-clone.
+                          description: The customization specification for the virtual
+                            machine post-clone.
                           items:
                             properties:
                               dnsServerList:
@@ -1328,10 +1370,10 @@ spec:
                                   type: object
                                 type: array
                               timeout:
-                                description: The amount of time, in minutes, to wait
+                                description: 'The amount of time, in minutes, to wait
                                   for guest OS customization to complete before returning
                                   with an error. Setting this value to 0 or a negative
-                                  value skips the waiter.
+                                  value skips the waiter. Default: 10.'
                                 type: number
                               windowsOptions:
                                 description: A list of configuration options specific
@@ -1404,8 +1446,8 @@ spec:
                           description: Mapping of ovf storage to the datastores to
                             use in vSphere.
                           type: object
-                        vsphereUuid:
-                          description: The UUID of the source virtual machine or vsphere.
+                        templateUuid:
+                          description: The UUID of the source virtual machine or template.
                           type: string
                         timeout:
                           description: The timeout, in minutes, to wait for the virtual
@@ -1681,7 +1723,7 @@ spec:
                       properties:
                         adapterType:
                           description: The controller type. Can be one of e1000, e1000e,
-                            vmxnet3, or vrdma.
+                            sriov, vmxnet3, or vrdma.
                           type: string
                         bandwidthLimit:
                           description: The upper bandwidth limit of this network interface,
@@ -1719,6 +1761,10 @@ spec:
                         ovfMapping:
                           description: Mapping of network interface to OVF network.
                           type: string
+                        physicalFunction:
+                          description: The ID of the Physical SR-IOV NIC to attach
+                            to, e.g. '0000:d8:00.0'
+                          type: string
                         useStaticMac:
                           description: If true, the mac_address field is treated as
                             a static MAC address and set accordingly.
@@ -1736,7 +1782,7 @@ spec:
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
-                      ovf/ova vsphere.
+                      ovf/ova template.
                     items:
                       properties:
                         allowUnverifiedSslCert:
@@ -1882,7 +1928,7 @@ spec:
                           additionalProperties:
                             type: string
                           description: A map of customizable vApp properties and their
-                            values. Allows customization of VMs cloned from OVF vspheres
+                            values. Allows customization of VMs cloned from OVF templates
                             which have customizable vApp properties.
                           type: object
                       type: object

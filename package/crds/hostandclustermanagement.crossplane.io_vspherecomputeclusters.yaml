@@ -374,6 +374,33 @@ spec:
                   vsanEnabled:
                     description: Whether the vSAN service is enabled for the cluster.
                     type: boolean
+                  vsanEsaEnabled:
+                    description: Whether the vSAN ESA service is enabled for the cluster.
+                    type: boolean
+                  vsanFaultDomains:
+                    description: The configuration for vSAN fault domains.
+                    items:
+                      properties:
+                        faultDomain:
+                          description: The configuration for single fault domain.
+                          items:
+                            properties:
+                              hostIds:
+                                description: The managed object IDs of the hosts to
+                                  put in the fault domain.
+                                items:
+                                  type: string
+                                type: array
+                              name:
+                                description: The name of fault domain.
+                                type: string
+                            required:
+                            - hostIds
+                            - name
+                            type: object
+                          type: array
+                      type: object
+                    type: array
                   vsanNetworkDiagnosticModeEnabled:
                     description: Whether the vSAN network diagnostic mode is enabled
                       for the cluster.
@@ -387,6 +414,38 @@ spec:
                       mounted on the cluster.
                     items:
                       type: string
+                    type: array
+                  vsanStretchedCluster:
+                    description: The configuration for stretched cluster.
+                    items:
+                      properties:
+                        preferredFaultDomainHostIds:
+                          description: The managed object IDs of the hosts to put
+                            in the first fault domain.
+                          items:
+                            type: string
+                          type: array
+                        preferredFaultDomainName:
+                          description: The name of prepferred fault domain.
+                          type: string
+                        secondaryFaultDomainHostIds:
+                          description: The managed object IDs of the hosts to put
+                            in the second fault domain.
+                          items:
+                            type: string
+                          type: array
+                        secondaryFaultDomainName:
+                          description: The name of secondary fault domain.
+                          type: string
+                        witnessNode:
+                          description: The managed object IDs of the host selected
+                            as witness node when enable stretched cluster.
+                          type: string
+                      required:
+                      - preferredFaultDomainHostIds
+                      - secondaryFaultDomainHostIds
+                      - witnessNode
+                      type: object
                     type: array
                   vsanUnmapEnabled:
                     description: Whether the vSAN unmap service is enabled for the
@@ -906,6 +965,30 @@ spec:
                   vsanEnabled:
                     description: Whether the vSAN service is enabled for the cluster.
                     type: boolean
+                  vsanEsaEnabled:
+                    description: Whether the vSAN ESA service is enabled for the cluster.
+                    type: boolean
+                  vsanFaultDomains:
+                    description: The configuration for vSAN fault domains.
+                    items:
+                      properties:
+                        faultDomain:
+                          description: The configuration for single fault domain.
+                          items:
+                            properties:
+                              hostIds:
+                                description: The managed object IDs of the hosts to
+                                  put in the fault domain.
+                                items:
+                                  type: string
+                                type: array
+                              name:
+                                description: The name of fault domain.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    type: array
                   vsanNetworkDiagnosticModeEnabled:
                     description: Whether the vSAN network diagnostic mode is enabled
                       for the cluster.
@@ -919,6 +1002,34 @@ spec:
                       mounted on the cluster.
                     items:
                       type: string
+                    type: array
+                  vsanStretchedCluster:
+                    description: The configuration for stretched cluster.
+                    items:
+                      properties:
+                        preferredFaultDomainHostIds:
+                          description: The managed object IDs of the hosts to put
+                            in the first fault domain.
+                          items:
+                            type: string
+                          type: array
+                        preferredFaultDomainName:
+                          description: The name of prepferred fault domain.
+                          type: string
+                        secondaryFaultDomainHostIds:
+                          description: The managed object IDs of the hosts to put
+                            in the second fault domain.
+                          items:
+                            type: string
+                          type: array
+                        secondaryFaultDomainName:
+                          description: The name of secondary fault domain.
+                          type: string
+                        witnessNode:
+                          description: The managed object IDs of the host selected
+                            as witness node when enable stretched cluster.
+                          type: string
+                      type: object
                     type: array
                   vsanUnmapEnabled:
                     description: Whether the vSAN unmap service is enabled for the
