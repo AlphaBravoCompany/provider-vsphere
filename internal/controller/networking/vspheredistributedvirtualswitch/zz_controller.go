@@ -18,8 +18,8 @@ import (
 	"github.com/upbound/upjet/pkg/terraform"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	v1alpha1 "github.com/Kumlin/provider-vsphere/apis/networking/v1alpha1"
-	features "github.com/Kumlin/provider-vsphere/internal/features"
+	v1alpha1 "github.com/AlphaBravoCompany/provider-vsphere/apis/networking/v1alpha1"
+	features "github.com/AlphaBravoCompany/provider-vsphere/internal/features"
 )
 
 // Setup adds a controller that reconciles VSphereDistributedVirtualSwitch managed resources.

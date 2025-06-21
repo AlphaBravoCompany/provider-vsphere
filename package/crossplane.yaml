@@ -3,8 +3,8 @@ kind: Provider
 metadata:
   name: provider-vsphere
   annotations:
-    meta.crossplane.io/maintainer: Crossplane Maintainers https://github.com/Kumlin/provider-vsphere/issues
-    meta.crossplane.io/source: github.com/Kumlin/provider-vsphere
+    meta.crossplane.io/maintainer: Crossplane Maintainers https://github.com/AlphaBravoCompany/provider-vsphere/issues
+    meta.crossplane.io/source: github.com/AlphaBravoCompany/provider-vsphere
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       VMware vSphere Crossplane provider adds support for
@@ -15,5 +15,5 @@ metadata:
       If you encounter an issue please reach out on
       [slack.crossplane.io](https://slack.crossplane.io) and create an issue in
       the
-      [Kumlin/provider-vsphere](https://github.com/Kumlin/provider-vsphere)
+      [AlphaBravoCompany/provider-vsphere](https://github.com/AlphaBravoCompany/provider-vsphere)
       repo.

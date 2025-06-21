@@ -2,7 +2,7 @@
 # Setup Project
 
 PROJECT_NAME ?= provider-vsphere
-PROJECT_REPO ?= github.com/Kumlin/$(PROJECT_NAME)
+PROJECT_REPO ?= github.com/AlphaBravoCompany/$(PROJECT_NAME)
 
 export TERRAFORM_VERSION ?= 1.5.5
 

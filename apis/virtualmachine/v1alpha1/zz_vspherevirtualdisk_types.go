@@ -39,7 +39,7 @@ type VSphereVirtualDiskParameters struct {
 	// +kubebuilder:validation:Optional
 	CreateDirectories *bool `json:"createDirectories,omitempty" tf:"create_directories,omitempty"`
 
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)
 	// +kubebuilder:validation:Optional
 	Datacenter *string `json:"datacenter,omitempty" tf:"datacenter,omitempty"`
@@ -52,7 +52,7 @@ type VSphereVirtualDiskParameters struct {
 	// +kubebuilder:validation:Optional
 	DatacenterSelector *v1.Selector `json:"datacenterSelector,omitempty" tf:"-"`
 
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)
 	// +kubebuilder:validation:Optional
 	Datastore *string `json:"datastore,omitempty" tf:"datastore,omitempty"`

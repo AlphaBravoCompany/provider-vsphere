@@ -860,7 +860,7 @@ type VSphereVirtualMachineParameters struct {
 	DatastoreClusterID *string `json:"datastoreClusterId,omitempty" tf:"datastore_cluster_id,omitempty"`
 
 	// The ID of the virtual machine's datastore. The virtual machine configuration is placed here, along with any virtual disks that are created without datastores.
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	DatastoreID *string `json:"datastoreId,omitempty" tf:"datastore_id,omitempty"`
@@ -1006,7 +1006,7 @@ type VSphereVirtualMachineParameters struct {
 	ReplaceTrigger *string `json:"replaceTrigger,omitempty" tf:"replace_trigger,omitempty"`
 
 	// The ID of a resource pool to put the virtual machine in.
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	ResourcePoolID *string `json:"resourcePoolId,omitempty" tf:"resource_pool_id,omitempty"`

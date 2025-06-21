@@ -9,11 +9,11 @@ func Configure(p *config.Provider) {
 		r.Kind = "VSphereVirtualMachine"
 		r.Version = "v1alpha1"
 		r.References["resource_pool_id"] = config.Reference{
-			Type:      "github.com/Kumlin/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster",
+			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster",
 			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
 		r.References["datastore_id"] = config.Reference{
-			Type:      "github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
+			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
 			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
 	})

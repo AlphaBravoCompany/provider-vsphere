@@ -15,7 +15,7 @@ kind: Provider
 metadata:
   name: provider-vsphere
 spec:
-  package:docker.io/andrewkumlin/provider-vsphere-amd64:latest
+  package:docker.io/alphabravodevops/provider-vsphere-amd64:latest
 EOF
 ```
 
@@ -50,4 +50,4 @@ make build
 ## Report a Bug
 
 For filing bugs, suggesting improvements, or requesting new features, please
-open an [issue](https://github.com/Kumlin/provider-vsphere/issues).
+open an [issue](https://github.com/AlphaBravoCompany/provider-vsphere/issues).
