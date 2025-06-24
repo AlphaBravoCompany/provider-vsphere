@@ -121,6 +121,29 @@ spec:
                     - name
                     - namespace
                     type: object
+                  services:
+                    items:
+                      properties:
+                        ntpd:
+                          items:
+                            properties:
+                              enabled:
+                                description: Whether the NTP service is enabled. Default
+                                  is false.
+                                type: boolean
+                              ntpServers:
+                                items:
+                                  type: string
+                                type: array
+                              policy:
+                                description: The policy for the NTP service. Valid
+                                  values are 'Start and stop with host', 'Start and
+                                  stop manually', 'Start and stop with port usage'.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    type: array
                   tags:
                     description: A list of tag IDs to apply to this object.
                     items:
@@ -371,6 +394,29 @@ spec:
                   maintenance:
                     description: Set the host's maintenance mode. Default is false
                     type: boolean
+                  services:
+                    items:
+                      properties:
+                        ntpd:
+                          items:
+                            properties:
+                              enabled:
+                                description: Whether the NTP service is enabled. Default
+                                  is false.
+                                type: boolean
+                              ntpServers:
+                                items:
+                                  type: string
+                                type: array
+                              policy:
+                                description: The policy for the NTP service. Valid
+                                  values are 'Start and stop with host', 'Start and
+                                  stop manually', 'Start and stop with port usage'.
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                    type: array
                   tags:
                     description: A list of tag IDs to apply to this object.
                     items:

@@ -175,7 +175,7 @@ type VSphereDistributedVirtualSwitchObservation struct {
 	// The allocation level for the iSCSI traffic class. Can be one of high, low, normal, or custom.
 	ISCSIShareLevel *string `json:"iscsiShareLevel,omitempty" tf:"iscsi_share_level,omitempty"`
 
-	// Whether to ignore existing PVLAN mappings not managed by this resource. Defaults to false.
+	// Whether to ignore existing PVLAN mappings not managed by this resource.
 	IgnoreOtherPvlanMappings *bool `json:"ignoreOtherPvlanMappings,omitempty" tf:"ignore_other_pvlan_mappings,omitempty"`
 
 	// The average ingress bandwidth in bits per second if ingress shaping is enabled on the port.
@@ -241,7 +241,7 @@ type VSphereDistributedVirtualSwitchObservation struct {
 	// The number of seconds after which active flows are forced to be exported to the collector.
 	NetflowActiveFlowTimeout *float64 `json:"netflowActiveFlowTimeout,omitempty" tf:"netflow_active_flow_timeout,omitempty"`
 
-	// IP address for the netflow collector, using IPv4 or IPv6. IPv6 is supported in vSphere Distributed Switch Version 6.0 or later.
+	// IP address for the netflow collector, using IPv4 or IPv6.
 	NetflowCollectorIPAddress *string `json:"netflowCollectorIpAddress,omitempty" tf:"netflow_collector_ip_address,omitempty"`
 
 	// The port for the netflow collector.
@@ -304,7 +304,7 @@ type VSphereDistributedVirtualSwitchObservation struct {
 	// The allocation level for the vdp traffic class. Can be one of high, low, normal, or custom.
 	VdpShareLevel *string `json:"vdpShareLevel,omitempty" tf:"vdp_share_level,omitempty"`
 
-	// The version of this virtual switch. Allowed versions are 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0, 5.1.0, and 5.0.0.
+	// The version of this virtual switch. Allowed versions are 8.0.3, 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0, 5.1.0, and 5.0.0.
 	Version *string `json:"version,omitempty" tf:"version,omitempty"`
 
 	// The maximum allowed usage for the virtualMachine traffic class, in Mbits/sec.
@@ -496,7 +496,7 @@ type VSphereDistributedVirtualSwitchParameters struct {
 	// +kubebuilder:validation:Optional
 	ISCSIShareLevel *string `json:"iscsiShareLevel,omitempty" tf:"iscsi_share_level,omitempty"`
 
-	// Whether to ignore existing PVLAN mappings not managed by this resource. Defaults to false.
+	// Whether to ignore existing PVLAN mappings not managed by this resource.
 	// +kubebuilder:validation:Optional
 	IgnoreOtherPvlanMappings *bool `json:"ignoreOtherPvlanMappings,omitempty" tf:"ignore_other_pvlan_mappings,omitempty"`
 
@@ -584,7 +584,7 @@ type VSphereDistributedVirtualSwitchParameters struct {
 	// +kubebuilder:validation:Optional
 	NetflowActiveFlowTimeout *float64 `json:"netflowActiveFlowTimeout,omitempty" tf:"netflow_active_flow_timeout,omitempty"`
 
-	// IP address for the netflow collector, using IPv4 or IPv6. IPv6 is supported in vSphere Distributed Switch Version 6.0 or later.
+	// IP address for the netflow collector, using IPv4 or IPv6.
 	// +kubebuilder:validation:Optional
 	NetflowCollectorIPAddress *string `json:"netflowCollectorIpAddress,omitempty" tf:"netflow_collector_ip_address,omitempty"`
 
@@ -668,7 +668,7 @@ type VSphereDistributedVirtualSwitchParameters struct {
 	// +kubebuilder:validation:Optional
 	VdpShareLevel *string `json:"vdpShareLevel,omitempty" tf:"vdp_share_level,omitempty"`
 
-	// The version of this virtual switch. Allowed versions are 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0, 5.1.0, and 5.0.0.
+	// The version of this virtual switch. Allowed versions are 8.0.3, 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0, 5.1.0, and 5.0.0.
 	// +kubebuilder:validation:Optional
 	Version *string `json:"version,omitempty" tf:"version,omitempty"`
 

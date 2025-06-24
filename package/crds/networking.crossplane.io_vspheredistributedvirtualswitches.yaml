@@ -209,7 +209,7 @@ spec:
                     type: array
                   ignoreOtherPvlanMappings:
                     description: Whether to ignore existing PVLAN mappings not managed
-                      by this resource. Defaults to false.
+                      by this resource.
                     type: boolean
                   ingressShapingAverageBandwidth:
                     description: The average ingress bandwidth in bits per second
@@ -299,8 +299,7 @@ spec:
                     type: number
                   netflowCollectorIpAddress:
                     description: IP address for the netflow collector, using IPv4
-                      or IPv6. IPv6 is supported in vSphere Distributed Switch Version
-                      6.0 or later.
+                      or IPv6.
                     type: string
                   netflowCollectorPort:
                     description: The port for the netflow collector.
@@ -423,8 +422,8 @@ spec:
                     type: string
                   version:
                     description: The version of this virtual switch. Allowed versions
-                      are 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0,
-                      5.1.0, and 5.0.0.
+                      are 8.0.3, 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0,
+                      5.5.0, 5.1.0, and 5.0.0.
                     type: string
                   virtualmachineMaximumMbit:
                     description: The maximum allowed usage for the virtualMachine
@@ -834,7 +833,7 @@ spec:
                     type: string
                   ignoreOtherPvlanMappings:
                     description: Whether to ignore existing PVLAN mappings not managed
-                      by this resource. Defaults to false.
+                      by this resource.
                     type: boolean
                   ingressShapingAverageBandwidth:
                     description: The average ingress bandwidth in bits per second
@@ -924,8 +923,7 @@ spec:
                     type: number
                   netflowCollectorIpAddress:
                     description: IP address for the netflow collector, using IPv4
-                      or IPv6. IPv6 is supported in vSphere Distributed Switch Version
-                      6.0 or later.
+                      or IPv6.
                     type: string
                   netflowCollectorPort:
                     description: The port for the netflow collector.
@@ -1044,8 +1042,8 @@ spec:
                     type: string
                   version:
                     description: The version of this virtual switch. Allowed versions
-                      are 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0, 5.5.0,
-                      5.1.0, and 5.0.0.
+                      are 8.0.3, 8.0.0, 7.0.3, 7.0.2, 7.0.0, 6.6.0, 6.5.0, 6.0.0,
+                      5.5.0, 5.1.0, and 5.0.0.
                     type: string
                   virtualmachineMaximumMbit:
                     description: The maximum allowed usage for the virtualMachine

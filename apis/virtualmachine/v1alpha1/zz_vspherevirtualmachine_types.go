@@ -192,7 +192,7 @@ type DiskObservation struct {
 	// If this is true, the disk is attached instead of created. Implies keep_on_remove.
 	Attach *bool `json:"attach,omitempty" tf:"attach,omitempty"`
 
-	// The type of controller the disk should be connected to. Must be 'scsi', 'sata', or 'ide'.
+	// The type of controller the disk should be connected to. Must be 'scsi', 'sata', 'nvme', or 'ide'.
 	ControllerType *string `json:"controllerType,omitempty" tf:"controller_type,omitempty"`
 
 	// The datastore ID for this virtual disk, if different than the virtual machine.
@@ -259,7 +259,7 @@ type DiskParameters struct {
 	// +kubebuilder:validation:Optional
 	Attach *bool `json:"attach,omitempty" tf:"attach,omitempty"`
 
-	// The type of controller the disk should be connected to. Must be 'scsi', 'sata', or 'ide'.
+	// The type of controller the disk should be connected to. Must be 'scsi', 'sata', 'nvme', or 'ide'.
 	// +kubebuilder:validation:Optional
 	ControllerType *string `json:"controllerType,omitempty" tf:"controller_type,omitempty"`
 
@@ -697,6 +697,9 @@ type VSphereVirtualMachineObservation struct {
 	// The amount of memory (in MB) or CPU (in MHz) that this virtual machine is guaranteed.
 	MemoryReservation *float64 `json:"memoryReservation,omitempty" tf:"memory_reservation,omitempty"`
 
+	// If set true, memory resource reservation for this virtual machine will always be equal to the virtual machine's memory size;increases in memory size will be rejected when a corresponding reservation increase is not possible. This feature may only be enabled if it is currently possible to reserve all of the virtual machine's memory.
+	MemoryReservationLockedToMax *bool `json:"memoryReservationLockedToMax,omitempty" tf:"memory_reservation_locked_to_max,omitempty"`
+
 	// The amount of shares to allocate to memory for a custom share level.
 	MemoryShareCount *float64 `json:"memoryShareCount,omitempty" tf:"memory_share_count,omitempty"`
 
@@ -723,6 +726,9 @@ type VSphereVirtualMachineObservation struct {
 
 	// The number of virtual processors to assign to this virtual machine.
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
+
+	// This directly affects the amount of disks you can add to the virtual machine and the maximum disk unit number. Note that lowering this value does not remove controllers.
+	NvmeControllerCount *float64 `json:"nvmeControllerCount,omitempty" tf:"nvme_controller_count,omitempty"`
 
 	// A specification for deploying a virtual machine from ovf/ova template.
 	OvfDeploy []OvfDeployObservation `json:"ovfDeploy,omitempty" tf:"ovf_deploy,omitempty"`
@@ -809,6 +815,9 @@ type VSphereVirtualMachineObservation struct {
 
 	// The path of the virtual machine's configuration file in the VM's datastore.
 	VmxPath *string `json:"vmxPath,omitempty" tf:"vmx_path,omitempty"`
+
+	// A specification for a virtual Trusted Platform Module (TPM) device on the virtual machine.
+	Vtpm []VtpmObservation `json:"vtpm,omitempty" tf:"vtpm,omitempty"`
 
 	// Flag to specify if I/O MMU virtualization, also called Intel Virtualization Technology for Directed I/O (VT-d) and AMD I/O Virtualization (AMD-Vi or IOMMU), is enabled.
 	VvtdEnabled *bool `json:"vvtdEnabled,omitempty" tf:"vvtd_enabled,omitempty"`
@@ -991,6 +1000,10 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	MemoryReservation *float64 `json:"memoryReservation,omitempty" tf:"memory_reservation,omitempty"`
 
+	// If set true, memory resource reservation for this virtual machine will always be equal to the virtual machine's memory size;increases in memory size will be rejected when a corresponding reservation increase is not possible. This feature may only be enabled if it is currently possible to reserve all of the virtual machine's memory.
+	// +kubebuilder:validation:Optional
+	MemoryReservationLockedToMax *bool `json:"memoryReservationLockedToMax,omitempty" tf:"memory_reservation_locked_to_max,omitempty"`
+
 	// The amount of shares to allocate to memory for a custom share level.
 	// +kubebuilder:validation:Optional
 	MemoryShareCount *float64 `json:"memoryShareCount,omitempty" tf:"memory_share_count,omitempty"`
@@ -1022,6 +1035,10 @@ type VSphereVirtualMachineParameters struct {
 	// The number of virtual processors to assign to this virtual machine.
 	// +kubebuilder:validation:Optional
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
+
+	// This directly affects the amount of disks you can add to the virtual machine and the maximum disk unit number. Note that lowering this value does not remove controllers.
+	// +kubebuilder:validation:Optional
+	NvmeControllerCount *float64 `json:"nvmeControllerCount,omitempty" tf:"nvme_controller_count,omitempty"`
 
 	// A specification for deploying a virtual machine from ovf/ova template.
 	// +kubebuilder:validation:Optional
@@ -1125,6 +1142,10 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	VbsEnabled *bool `json:"vbsEnabled,omitempty" tf:"vbs_enabled,omitempty"`
 
+	// A specification for a virtual Trusted Platform Module (TPM) device on the virtual machine.
+	// +kubebuilder:validation:Optional
+	Vtpm []VtpmParameters `json:"vtpm,omitempty" tf:"vtpm,omitempty"`
+
 	// Flag to specify if I/O MMU virtualization, also called Intel Virtualization Technology for Directed I/O (VT-d) and AMD I/O Virtualization (AMD-Vi or IOMMU), is enabled.
 	// +kubebuilder:validation:Optional
 	VvtdEnabled *bool `json:"vvtdEnabled,omitempty" tf:"vvtd_enabled,omitempty"`
@@ -1155,6 +1176,19 @@ type VappParameters struct {
 	Properties map[string]*string `json:"properties,omitempty" tf:"properties,omitempty"`
 }
 
+type VtpmObservation struct {
+
+	// The version of the TPM device. Default is 2.0.
+	Version *string `json:"version,omitempty" tf:"version,omitempty"`
+}
+
+type VtpmParameters struct {
+
+	// The version of the TPM device. Default is 2.0.
+	// +kubebuilder:validation:Optional
+	Version *string `json:"version,omitempty" tf:"version,omitempty"`
+}
+
 type WindowsOptionsObservation struct {
 
 	// Specifies whether or not the VM automatically logs on as Administrator.
@@ -1168,6 +1202,9 @@ type WindowsOptionsObservation struct {
 
 	// The user account of the domain administrator used to join this virtual machine to the domain.
 	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
+
+	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
+	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
 
 	// The full name of the user of this virtual machine.
 	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
@@ -1213,6 +1250,10 @@ type WindowsOptionsParameters struct {
 	// The user account of the domain administrator used to join this virtual machine to the domain.
 	// +kubebuilder:validation:Optional
 	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
+
+	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
+	// +kubebuilder:validation:Optional
+	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
 
 	// The full name of the user of this virtual machine.
 	// +kubebuilder:validation:Optional
