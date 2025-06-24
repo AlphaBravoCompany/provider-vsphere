@@ -48,7 +48,10 @@ type CdromParameters struct {
 
 type CloneObservation struct {
 
-	// The customization spec for this clone. This allows the user to configure the virtual machine post-clone.
+	// The customization specification for the virtual machine post-clone.
+	CustomizationSpec []CustomizationSpecObservation `json:"customizationSpec,omitempty" tf:"customization_spec,omitempty"`
+
+	// The customization specification for the virtual machine post-clone.
 	Customize []CustomizeObservation `json:"customize,omitempty" tf:"customize,omitempty"`
 
 	// Whether or not to create a linked clone when cloning. When this option is used, the source VM must have a single snapshot associated with it.
@@ -60,8 +63,8 @@ type CloneObservation struct {
 	// Mapping of ovf storage to the datastores to use in vSphere.
 	OvfStorageMap map[string]*string `json:"ovfStorageMap,omitempty" tf:"ovf_storage_map,omitempty"`
 
-	// The UUID of the source virtual machine or vsphere.
-	TemplateUUID *string `json:"vsphereUuid,omitempty" tf:"vsphere_uuid,omitempty"`
+	// The UUID of the source virtual machine or template.
+	TemplateUUID *string `json:"templateUuid,omitempty" tf:"template_uuid,omitempty"`
 
 	// The timeout, in minutes, to wait for the virtual machine clone to complete.
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
@@ -69,7 +72,11 @@ type CloneObservation struct {
 
 type CloneParameters struct {
 
-	// The customization spec for this clone. This allows the user to configure the virtual machine post-clone.
+	// The customization specification for the virtual machine post-clone.
+	// +kubebuilder:validation:Optional
+	CustomizationSpec []CustomizationSpecParameters `json:"customizationSpec,omitempty" tf:"customization_spec,omitempty"`
+
+	// The customization specification for the virtual machine post-clone.
 	// +kubebuilder:validation:Optional
 	Customize []CustomizeParameters `json:"customize,omitempty" tf:"customize,omitempty"`
 
@@ -85,11 +92,31 @@ type CloneParameters struct {
 	// +kubebuilder:validation:Optional
 	OvfStorageMap map[string]*string `json:"ovfStorageMap,omitempty" tf:"ovf_storage_map,omitempty"`
 
-	// The UUID of the source virtual machine or vsphere.
+	// The UUID of the source virtual machine or template.
 	// +kubebuilder:validation:Required
-	TemplateUUID *string `json:"vsphereUuid" tf:"vsphere_uuid,omitempty"`
+	TemplateUUID *string `json:"templateUuid" tf:"template_uuid,omitempty"`
 
 	// The timeout, in minutes, to wait for the virtual machine clone to complete.
+	// +kubebuilder:validation:Optional
+	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
+}
+
+type CustomizationSpecObservation struct {
+
+	// The unique identifier of the customization specification is its name and is unique per vCenter Server instance.
+	ID *string `json:"id,omitempty" tf:"id,omitempty"`
+
+	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
+	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
+}
+
+type CustomizationSpecParameters struct {
+
+	// The unique identifier of the customization specification is its name and is unique per vCenter Server instance.
+	// +kubebuilder:validation:Required
+	ID *string `json:"id" tf:"id,omitempty"`
+
+	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
 	// +kubebuilder:validation:Optional
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
 }
@@ -114,7 +141,7 @@ type CustomizeObservation struct {
 	// A specification of network interface configuration options.
 	NetworkInterface []NetworkInterfaceObservation `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
 
-	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter.
+	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
 
 	// A list of configuration options specific to Windows virtual machines.
@@ -147,7 +174,7 @@ type CustomizeParameters struct {
 	// +kubebuilder:validation:Optional
 	NetworkInterface []NetworkInterfaceParameters `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
 
-	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter.
+	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
 	// +kubebuilder:validation:Optional
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
 
@@ -458,7 +485,7 @@ type OvfDeployParameters struct {
 
 type VSphereVirtualMachineNetworkInterfaceObservation struct {
 
-	// The controller type. Can be one of e1000, e1000e, vmxnet3, or vrdma.
+	// The controller type. Can be one of e1000, e1000e, sriov, vmxnet3, or vrdma.
 	AdapterType *string `json:"adapterType,omitempty" tf:"adapter_type,omitempty"`
 
 	// The upper bandwidth limit of this network interface, in Mbits/sec.
@@ -488,13 +515,16 @@ type VSphereVirtualMachineNetworkInterfaceObservation struct {
 	// Mapping of network interface to OVF network.
 	OvfMapping *string `json:"ovfMapping,omitempty" tf:"ovf_mapping,omitempty"`
 
+	// The ID of the Physical SR-IOV NIC to attach to, e.g. '0000:d8:00.0'
+	PhysicalFunction *string `json:"physicalFunction,omitempty" tf:"physical_function,omitempty"`
+
 	// If true, the mac_address field is treated as a static MAC address and set accordingly.
 	UseStaticMac *bool `json:"useStaticMac,omitempty" tf:"use_static_mac,omitempty"`
 }
 
 type VSphereVirtualMachineNetworkInterfaceParameters struct {
 
-	// The controller type. Can be one of e1000, e1000e, vmxnet3, or vrdma.
+	// The controller type. Can be one of e1000, e1000e, sriov, vmxnet3, or vrdma.
 	// +kubebuilder:validation:Optional
 	AdapterType *string `json:"adapterType,omitempty" tf:"adapter_type,omitempty"`
 
@@ -525,6 +555,10 @@ type VSphereVirtualMachineNetworkInterfaceParameters struct {
 	// Mapping of network interface to OVF network.
 	// +kubebuilder:validation:Optional
 	OvfMapping *string `json:"ovfMapping,omitempty" tf:"ovf_mapping,omitempty"`
+
+	// The ID of the Physical SR-IOV NIC to attach to, e.g. '0000:d8:00.0'
+	// +kubebuilder:validation:Optional
+	PhysicalFunction *string `json:"physicalFunction,omitempty" tf:"physical_function,omitempty"`
 
 	// If true, the mac_address field is treated as a static MAC address and set accordingly.
 	// +kubebuilder:validation:Optional
@@ -575,7 +609,7 @@ type VSphereVirtualMachineObservation struct {
 	// A unique identifier for a given version of the last configuration applied, such the timestamp of the last update to the configuration.
 	ChangeVersion *string `json:"changeVersion,omitempty" tf:"change_version,omitempty"`
 
-	// A specification for cloning a virtual machine from vsphere.
+	// A specification for cloning a virtual machine from template.
 	Clone []CloneObservation `json:"clone,omitempty" tf:"clone,omitempty"`
 
 	// A list of custom attributes to set on this resource.
@@ -690,7 +724,7 @@ type VSphereVirtualMachineObservation struct {
 	// The number of virtual processors to assign to this virtual machine.
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
 
-	// A specification for deploying a virtual machine from ovf/ova vsphere.
+	// A specification for deploying a virtual machine from ovf/ova template.
 	OvfDeploy []OvfDeployObservation `json:"ovfDeploy,omitempty" tf:"ovf_deploy,omitempty"`
 
 	// A list of PCI passthrough devices
@@ -843,7 +877,7 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	Cdrom []CdromParameters `json:"cdrom,omitempty" tf:"cdrom,omitempty"`
 
-	// A specification for cloning a virtual machine from vsphere.
+	// A specification for cloning a virtual machine from template.
 	// +kubebuilder:validation:Optional
 	Clone []CloneParameters `json:"clone,omitempty" tf:"clone,omitempty"`
 
@@ -860,7 +894,7 @@ type VSphereVirtualMachineParameters struct {
 	DatastoreClusterID *string `json:"datastoreClusterId,omitempty" tf:"datastore_cluster_id,omitempty"`
 
 	// The ID of the virtual machine's datastore. The virtual machine configuration is placed here, along with any virtual disks that are created without datastores.
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	DatastoreID *string `json:"datastoreId,omitempty" tf:"datastore_id,omitempty"`
@@ -989,7 +1023,7 @@ type VSphereVirtualMachineParameters struct {
 	// +kubebuilder:validation:Optional
 	NumCpus *float64 `json:"numCpus,omitempty" tf:"num_cpus,omitempty"`
 
-	// A specification for deploying a virtual machine from ovf/ova vsphere.
+	// A specification for deploying a virtual machine from ovf/ova template.
 	// +kubebuilder:validation:Optional
 	OvfDeploy []OvfDeployParameters `json:"ovfDeploy,omitempty" tf:"ovf_deploy,omitempty"`
 
@@ -1006,7 +1040,7 @@ type VSphereVirtualMachineParameters struct {
 	ReplaceTrigger *string `json:"replaceTrigger,omitempty" tf:"replace_trigger,omitempty"`
 
 	// The ID of a resource pool to put the virtual machine in.
-	// +crossplane:generate:reference:type=github.com/Kumlin/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster
+	// +crossplane:generate:reference:type=github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster
 	// +crossplane:generate:reference:extractor=github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)
 	// +kubebuilder:validation:Optional
 	ResourcePoolID *string `json:"resourcePoolId,omitempty" tf:"resource_pool_id,omitempty"`
@@ -1110,13 +1144,13 @@ type VSphereVirtualMachineParameters struct {
 
 type VappObservation struct {
 
-	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF vspheres which have customizable vApp properties.
+	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF templates which have customizable vApp properties.
 	Properties map[string]*string `json:"properties,omitempty" tf:"properties,omitempty"`
 }
 
 type VappParameters struct {
 
-	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF vspheres which have customizable vApp properties.
+	// A map of customizable vApp properties and their values. Allows customization of VMs cloned from OVF templates which have customizable vApp properties.
 	// +kubebuilder:validation:Optional
 	Properties map[string]*string `json:"properties,omitempty" tf:"properties,omitempty"`
 }

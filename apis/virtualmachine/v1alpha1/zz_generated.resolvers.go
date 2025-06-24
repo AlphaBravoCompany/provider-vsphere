@@ -7,11 +7,10 @@ package v1alpha1
 
 import (
 	"context"
-
+	v1alpha12 "github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
+	v1alpha1 "github.com/AlphaBravoCompany/provider-vsphere/apis/inventory/v1alpha1"
+	v1alpha11 "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1"
 	reference "github.com/crossplane/crossplane-runtime/pkg/reference"
-	v1alpha12 "github.com/Kumlin/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
-	v1alpha1 "github.com/Kumlin/provider-vsphere/apis/inventory/v1alpha1"
-	v1alpha11 "github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1"
 	errors "github.com/pkg/errors"
 	resource "github.com/upbound/upjet/pkg/resource"
 	client "sigs.k8s.io/controller-runtime/pkg/client"

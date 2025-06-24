@@ -11,7 +11,7 @@ import (
 
 	"github.com/upbound/upjet/pkg/pipeline"
 
-	"github.com/Kumlin/provider-vsphere/config"
+	"github.com/AlphaBravoCompany/provider-vsphere/config"
 )
 
 func main() {

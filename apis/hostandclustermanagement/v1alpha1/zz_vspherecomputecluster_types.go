@@ -13,6 +13,26 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
+type FaultDomainObservation struct {
+
+	// The managed object IDs of the hosts to put in the fault domain.
+	HostIds []*string `json:"hostIds,omitempty" tf:"host_ids,omitempty"`
+
+	// The name of fault domain.
+	Name *string `json:"name,omitempty" tf:"name,omitempty"`
+}
+
+type FaultDomainParameters struct {
+
+	// The managed object IDs of the hosts to put in the fault domain.
+	// +kubebuilder:validation:Required
+	HostIds []*string `json:"hostIds" tf:"host_ids,omitempty"`
+
+	// The name of fault domain.
+	// +kubebuilder:validation:Required
+	Name *string `json:"name" tf:"name,omitempty"`
+}
+
 type VSphereComputeClusterObservation struct {
 
 	// A list of custom attributes to set on this resource.
@@ -200,6 +220,12 @@ type VSphereComputeClusterObservation struct {
 	// Whether the vSAN service is enabled for the cluster.
 	VsanEnabled *bool `json:"vsanEnabled,omitempty" tf:"vsan_enabled,omitempty"`
 
+	// Whether the vSAN ESA service is enabled for the cluster.
+	VsanEsaEnabled *bool `json:"vsanEsaEnabled,omitempty" tf:"vsan_esa_enabled,omitempty"`
+
+	// The configuration for vSAN fault domains.
+	VsanFaultDomains []VsanFaultDomainsObservation `json:"vsanFaultDomains,omitempty" tf:"vsan_fault_domains,omitempty"`
+
 	// Whether the vSAN network diagnostic mode is enabled for the cluster.
 	VsanNetworkDiagnosticModeEnabled *bool `json:"vsanNetworkDiagnosticModeEnabled,omitempty" tf:"vsan_network_diagnostic_mode_enabled,omitempty"`
 
@@ -208,6 +234,9 @@ type VSphereComputeClusterObservation struct {
 
 	// The managed object IDs of the vSAN datastore to be mounted on the cluster.
 	VsanRemoteDatastoreIds []*string `json:"vsanRemoteDatastoreIds,omitempty" tf:"vsan_remote_datastore_ids,omitempty"`
+
+	// The configuration for stretched cluster.
+	VsanStretchedCluster []VsanStretchedClusterObservation `json:"vsanStretchedCluster,omitempty" tf:"vsan_stretched_cluster,omitempty"`
 
 	// Whether the vSAN unmap service is enabled for the cluster.
 	VsanUnmapEnabled *bool `json:"vsanUnmapEnabled,omitempty" tf:"vsan_unmap_enabled,omitempty"`
@@ -458,6 +487,14 @@ type VSphereComputeClusterParameters struct {
 	// +kubebuilder:validation:Optional
 	VsanEnabled *bool `json:"vsanEnabled,omitempty" tf:"vsan_enabled,omitempty"`
 
+	// Whether the vSAN ESA service is enabled for the cluster.
+	// +kubebuilder:validation:Optional
+	VsanEsaEnabled *bool `json:"vsanEsaEnabled,omitempty" tf:"vsan_esa_enabled,omitempty"`
+
+	// The configuration for vSAN fault domains.
+	// +kubebuilder:validation:Optional
+	VsanFaultDomains []VsanFaultDomainsParameters `json:"vsanFaultDomains,omitempty" tf:"vsan_fault_domains,omitempty"`
+
 	// Whether the vSAN network diagnostic mode is enabled for the cluster.
 	// +kubebuilder:validation:Optional
 	VsanNetworkDiagnosticModeEnabled *bool `json:"vsanNetworkDiagnosticModeEnabled,omitempty" tf:"vsan_network_diagnostic_mode_enabled,omitempty"`
@@ -469,6 +506,10 @@ type VSphereComputeClusterParameters struct {
 	// The managed object IDs of the vSAN datastore to be mounted on the cluster.
 	// +kubebuilder:validation:Optional
 	VsanRemoteDatastoreIds []*string `json:"vsanRemoteDatastoreIds,omitempty" tf:"vsan_remote_datastore_ids,omitempty"`
+
+	// The configuration for stretched cluster.
+	// +kubebuilder:validation:Optional
+	VsanStretchedCluster []VsanStretchedClusterParameters `json:"vsanStretchedCluster,omitempty" tf:"vsan_stretched_cluster,omitempty"`
 
 	// Whether the vSAN unmap service is enabled for the cluster.
 	// +kubebuilder:validation:Optional
@@ -497,6 +538,60 @@ type VsanDiskGroupParameters struct {
 	// List of storage disks.
 	// +kubebuilder:validation:Optional
 	Storage []*string `json:"storage,omitempty" tf:"storage,omitempty"`
+}
+
+type VsanFaultDomainsObservation struct {
+
+	// The configuration for single fault domain.
+	FaultDomain []FaultDomainObservation `json:"faultDomain,omitempty" tf:"fault_domain,omitempty"`
+}
+
+type VsanFaultDomainsParameters struct {
+
+	// The configuration for single fault domain.
+	// +kubebuilder:validation:Optional
+	FaultDomain []FaultDomainParameters `json:"faultDomain,omitempty" tf:"fault_domain,omitempty"`
+}
+
+type VsanStretchedClusterObservation struct {
+
+	// The managed object IDs of the hosts to put in the first fault domain.
+	PreferredFaultDomainHostIds []*string `json:"preferredFaultDomainHostIds,omitempty" tf:"preferred_fault_domain_host_ids,omitempty"`
+
+	// The name of prepferred fault domain.
+	PreferredFaultDomainName *string `json:"preferredFaultDomainName,omitempty" tf:"preferred_fault_domain_name,omitempty"`
+
+	// The managed object IDs of the hosts to put in the second fault domain.
+	SecondaryFaultDomainHostIds []*string `json:"secondaryFaultDomainHostIds,omitempty" tf:"secondary_fault_domain_host_ids,omitempty"`
+
+	// The name of secondary fault domain.
+	SecondaryFaultDomainName *string `json:"secondaryFaultDomainName,omitempty" tf:"secondary_fault_domain_name,omitempty"`
+
+	// The managed object IDs of the host selected as witness node when enable stretched cluster.
+	WitnessNode *string `json:"witnessNode,omitempty" tf:"witness_node,omitempty"`
+}
+
+type VsanStretchedClusterParameters struct {
+
+	// The managed object IDs of the hosts to put in the first fault domain.
+	// +kubebuilder:validation:Required
+	PreferredFaultDomainHostIds []*string `json:"preferredFaultDomainHostIds" tf:"preferred_fault_domain_host_ids,omitempty"`
+
+	// The name of prepferred fault domain.
+	// +kubebuilder:validation:Optional
+	PreferredFaultDomainName *string `json:"preferredFaultDomainName,omitempty" tf:"preferred_fault_domain_name,omitempty"`
+
+	// The managed object IDs of the hosts to put in the second fault domain.
+	// +kubebuilder:validation:Required
+	SecondaryFaultDomainHostIds []*string `json:"secondaryFaultDomainHostIds" tf:"secondary_fault_domain_host_ids,omitempty"`
+
+	// The name of secondary fault domain.
+	// +kubebuilder:validation:Optional
+	SecondaryFaultDomainName *string `json:"secondaryFaultDomainName,omitempty" tf:"secondary_fault_domain_name,omitempty"`
+
+	// The managed object IDs of the host selected as witness node when enable stretched cluster.
+	// +kubebuilder:validation:Required
+	WitnessNode *string `json:"witnessNode" tf:"witness_node,omitempty"`
 }
 
 // VSphereComputeClusterSpec defines the desired state of VSphereComputeCluster

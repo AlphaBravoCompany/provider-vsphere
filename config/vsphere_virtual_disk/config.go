@@ -10,11 +10,11 @@ func Configure(p *config.Provider) {
 		r.Kind = "VSphereVirtualDisk"
 		r.Version = "v1alpha1"
 		r.References["datacenter"] = config.Reference{
-			Type:      "github.com/Kumlin/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter",
+			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter",
 			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 		r.References["datastore"] = config.Reference{
-			Type:      "github.com/Kumlin/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
+			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
 			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 	})

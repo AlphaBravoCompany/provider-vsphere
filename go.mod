@@ -1,4 +1,4 @@
-module github.com/Kumlin/provider-vsphere
+module github.com/AlphaBravoCompany/provider-vsphere
 
 go 1.18
 
