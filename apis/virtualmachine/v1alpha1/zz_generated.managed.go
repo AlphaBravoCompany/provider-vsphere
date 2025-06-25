@@ -159,6 +159,82 @@ func (mg *VSphereContentLibraryItem) SetWriteConnectionSecretToReference(r *xpv1
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
+// GetCondition of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetDeletionPolicy of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// GetManagementPolicy of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetManagementPolicy() xpv1.ManagementPolicy {
+	return mg.Spec.ManagementPolicy
+}
+
+// GetProviderConfigReference of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+/*
+GetProviderReference of this VSphereGuestOsCustomization.
+Deprecated: Use GetProviderConfigReference.
+*/
+func (mg *VSphereGuestOsCustomization) GetProviderReference() *xpv1.Reference {
+	return mg.Spec.ProviderReference
+}
+
+// GetPublishConnectionDetailsTo of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// GetWriteConnectionSecretToReference of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetDeletionPolicy of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// SetManagementPolicy of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetManagementPolicy(r xpv1.ManagementPolicy) {
+	mg.Spec.ManagementPolicy = r
+}
+
+// SetProviderConfigReference of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+/*
+SetProviderReference of this VSphereGuestOsCustomization.
+Deprecated: Use SetProviderConfigReference.
+*/
+func (mg *VSphereGuestOsCustomization) SetProviderReference(r *xpv1.Reference) {
+	mg.Spec.ProviderReference = r
+}
+
+// SetPublishConnectionDetailsTo of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// SetWriteConnectionSecretToReference of this VSphereGuestOsCustomization.
+func (mg *VSphereGuestOsCustomization) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // GetCondition of this VSphereVappContainer.
 func (mg *VSphereVappContainer) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
 	return mg.Status.GetCondition(ct)

@@ -13,12 +13,14 @@ import (
 	v1alpha1 "github.com/AlphaBravoCompany/provider-vsphere/apis/administration/v1alpha1"
 	v1alpha1hostandclustermanagement "github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1"
 	v1alpha1inventory "github.com/AlphaBravoCompany/provider-vsphere/apis/inventory/v1alpha1"
+	v1alpha1lifecycle "github.com/AlphaBravoCompany/provider-vsphere/apis/lifecycle/v1alpha1"
 	v1alpha1networking "github.com/AlphaBravoCompany/provider-vsphere/apis/networking/v1alpha1"
 	v1alpha1security "github.com/AlphaBravoCompany/provider-vsphere/apis/security/v1alpha1"
 	v1alpha1storage "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1"
 	v1alpha1apis "github.com/AlphaBravoCompany/provider-vsphere/apis/v1alpha1"
 	v1beta1 "github.com/AlphaBravoCompany/provider-vsphere/apis/v1beta1"
 	v1alpha1virtualmachine "github.com/AlphaBravoCompany/provider-vsphere/apis/virtualmachine/v1alpha1"
+	v1alpha1workloadmanagement "github.com/AlphaBravoCompany/provider-vsphere/apis/workloadmanagement/v1alpha1"
 )
 
 func init() {
@@ -27,12 +29,14 @@ func init() {
 		v1alpha1.SchemeBuilder.AddToScheme,
 		v1alpha1hostandclustermanagement.SchemeBuilder.AddToScheme,
 		v1alpha1inventory.SchemeBuilder.AddToScheme,
+		v1alpha1lifecycle.SchemeBuilder.AddToScheme,
 		v1alpha1networking.SchemeBuilder.AddToScheme,
 		v1alpha1security.SchemeBuilder.AddToScheme,
 		v1alpha1storage.SchemeBuilder.AddToScheme,
 		v1alpha1apis.SchemeBuilder.AddToScheme,
 		v1beta1.SchemeBuilder.AddToScheme,
 		v1alpha1virtualmachine.SchemeBuilder.AddToScheme,
+		v1alpha1workloadmanagement.SchemeBuilder.AddToScheme,
 	)
 }
 

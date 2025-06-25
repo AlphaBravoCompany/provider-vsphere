@@ -28,7 +28,7 @@ func Configure(p *config.Provider) {
 	p.AddResourceConfigurator("vsphere_compute_cluster_vm_anti_affinity_rule", func(r *config.Resource) {
 		r.ShortGroup = shortGroup
 		r.Kind = "VSphereComputeClusterVmAntiAffinityRule"
-		r.Version = "v1alpha1"
+		r.Version = version
 	})
 
 	p.AddResourceConfigurator("vsphere_compute_cluster_vm_dependency_rule", func(r *config.Resource) {

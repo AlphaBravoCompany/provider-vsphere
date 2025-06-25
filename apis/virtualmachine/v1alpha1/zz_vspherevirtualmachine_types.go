@@ -121,6 +121,92 @@ type CustomizationSpecParameters struct {
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
 }
 
+type CustomizeLinuxOptionsObservation struct {
+
+	// The domain name for this virtual machine.
+	Domain *string `json:"domain,omitempty" tf:"domain,omitempty"`
+
+	// The hostname for this virtual machine.
+	HostName *string `json:"hostName,omitempty" tf:"host_name,omitempty"`
+
+	// Specifies whether or not the hardware clock should be in UTC or not.
+	HwClockUtc *bool `json:"hwClockUtc,omitempty" tf:"hw_clock_utc,omitempty"`
+
+	// Customize the time zone on the VM. This should be a time zone-style entry, like America/Los_Angeles.
+	TimeZone *string `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
+}
+
+type CustomizeLinuxOptionsParameters struct {
+
+	// The domain name for this virtual machine.
+	// +kubebuilder:validation:Required
+	Domain *string `json:"domain" tf:"domain,omitempty"`
+
+	// The hostname for this virtual machine.
+	// +kubebuilder:validation:Required
+	HostName *string `json:"hostName" tf:"host_name,omitempty"`
+
+	// Specifies whether or not the hardware clock should be in UTC or not.
+	// +kubebuilder:validation:Optional
+	HwClockUtc *bool `json:"hwClockUtc,omitempty" tf:"hw_clock_utc,omitempty"`
+
+	// The customization script to run before and or after guest customization
+	// +kubebuilder:validation:Optional
+	ScriptTextSecretRef *v1.SecretKeySelector `json:"scriptTextSecretRef,omitempty" tf:"-"`
+
+	// Customize the time zone on the VM. This should be a time zone-style entry, like America/Los_Angeles.
+	// +kubebuilder:validation:Optional
+	TimeZone *string `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
+}
+
+type CustomizeNetworkInterfaceObservation struct {
+
+	// A DNS search domain to add to the DNS configuration on the virtual machine.
+	DNSDomain *string `json:"dnsDomain,omitempty" tf:"dns_domain,omitempty"`
+
+	// Network-interface specific DNS settings for Windows operating systems. Ignored on Linux.
+	DNSServerList []*string `json:"dnsServerList,omitempty" tf:"dns_server_list,omitempty"`
+
+	// The IPv4 address assigned to this network adapter. If left blank, DHCP is used.
+	IPv4Address *string `json:"ipv4Address,omitempty" tf:"ipv4_address,omitempty"`
+
+	// The IPv4 CIDR netmask for the supplied IP address. Ignored if DHCP is selected.
+	IPv4Netmask *float64 `json:"ipv4Netmask,omitempty" tf:"ipv4_netmask,omitempty"`
+
+	// The IPv6 address assigned to this network adapter. If left blank, default auto-configuration is used.
+	IPv6Address *string `json:"ipv6Address,omitempty" tf:"ipv6_address,omitempty"`
+
+	// The IPv6 CIDR netmask for the supplied IP address. Ignored if auto-configuration is selected.
+	IPv6Netmask *float64 `json:"ipv6Netmask,omitempty" tf:"ipv6_netmask,omitempty"`
+}
+
+type CustomizeNetworkInterfaceParameters struct {
+
+	// A DNS search domain to add to the DNS configuration on the virtual machine.
+	// +kubebuilder:validation:Optional
+	DNSDomain *string `json:"dnsDomain,omitempty" tf:"dns_domain,omitempty"`
+
+	// Network-interface specific DNS settings for Windows operating systems. Ignored on Linux.
+	// +kubebuilder:validation:Optional
+	DNSServerList []*string `json:"dnsServerList,omitempty" tf:"dns_server_list,omitempty"`
+
+	// The IPv4 address assigned to this network adapter. If left blank, DHCP is used.
+	// +kubebuilder:validation:Optional
+	IPv4Address *string `json:"ipv4Address,omitempty" tf:"ipv4_address,omitempty"`
+
+	// The IPv4 CIDR netmask for the supplied IP address. Ignored if DHCP is selected.
+	// +kubebuilder:validation:Optional
+	IPv4Netmask *float64 `json:"ipv4Netmask,omitempty" tf:"ipv4_netmask,omitempty"`
+
+	// The IPv6 address assigned to this network adapter. If left blank, default auto-configuration is used.
+	// +kubebuilder:validation:Optional
+	IPv6Address *string `json:"ipv6Address,omitempty" tf:"ipv6_address,omitempty"`
+
+	// The IPv6 CIDR netmask for the supplied IP address. Ignored if auto-configuration is selected.
+	// +kubebuilder:validation:Optional
+	IPv6Netmask *float64 `json:"ipv6Netmask,omitempty" tf:"ipv6_netmask,omitempty"`
+}
+
 type CustomizeObservation struct {
 
 	// The list of DNS servers for a virtual network adapter with a static IP address.
@@ -136,16 +222,16 @@ type CustomizeObservation struct {
 	IPv6Gateway *string `json:"ipv6Gateway,omitempty" tf:"ipv6_gateway,omitempty"`
 
 	// A list of configuration options specific to Linux virtual machines.
-	LinuxOptions []LinuxOptionsObservation `json:"linuxOptions,omitempty" tf:"linux_options,omitempty"`
+	LinuxOptions []CustomizeLinuxOptionsObservation `json:"linuxOptions,omitempty" tf:"linux_options,omitempty"`
 
 	// A specification of network interface configuration options.
-	NetworkInterface []NetworkInterfaceObservation `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
+	NetworkInterface []CustomizeNetworkInterfaceObservation `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
 
 	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
 	Timeout *float64 `json:"timeout,omitempty" tf:"timeout,omitempty"`
 
 	// A list of configuration options specific to Windows virtual machines.
-	WindowsOptions []WindowsOptionsObservation `json:"windowsOptions,omitempty" tf:"windows_options,omitempty"`
+	WindowsOptions []CustomizeWindowsOptionsObservation `json:"windowsOptions,omitempty" tf:"windows_options,omitempty"`
 }
 
 type CustomizeParameters struct {
@@ -168,11 +254,11 @@ type CustomizeParameters struct {
 
 	// A list of configuration options specific to Linux virtual machines.
 	// +kubebuilder:validation:Optional
-	LinuxOptions []LinuxOptionsParameters `json:"linuxOptions,omitempty" tf:"linux_options,omitempty"`
+	LinuxOptions []CustomizeLinuxOptionsParameters `json:"linuxOptions,omitempty" tf:"linux_options,omitempty"`
 
 	// A specification of network interface configuration options.
 	// +kubebuilder:validation:Optional
-	NetworkInterface []NetworkInterfaceParameters `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
+	NetworkInterface []CustomizeNetworkInterfaceParameters `json:"networkInterface,omitempty" tf:"network_interface,omitempty"`
 
 	// The amount of time, in minutes, to wait for guest OS customization to complete before returning with an error. Setting this value to 0 or a negative value skips the waiter. Default: 10.
 	// +kubebuilder:validation:Optional
@@ -180,11 +266,106 @@ type CustomizeParameters struct {
 
 	// A list of configuration options specific to Windows virtual machines.
 	// +kubebuilder:validation:Optional
-	WindowsOptions []WindowsOptionsParameters `json:"windowsOptions,omitempty" tf:"windows_options,omitempty"`
+	WindowsOptions []CustomizeWindowsOptionsParameters `json:"windowsOptions,omitempty" tf:"windows_options,omitempty"`
 
 	// Use this option to specify a windows sysprep file directly.
 	// +kubebuilder:validation:Optional
 	WindowsSysprepTextSecretRef *v1.SecretKeySelector `json:"windowsSysprepTextSecretRef,omitempty" tf:"-"`
+}
+
+type CustomizeWindowsOptionsObservation struct {
+
+	// Specifies whether or not the VM automatically logs on as Administrator.
+	AutoLogon *bool `json:"autoLogon,omitempty" tf:"auto_logon,omitempty"`
+
+	// Specifies how many times the VM should auto-logon the Administrator account when auto_logon is true.
+	AutoLogonCount *float64 `json:"autoLogonCount,omitempty" tf:"auto_logon_count,omitempty"`
+
+	// The host name for this virtual machine.
+	ComputerName *string `json:"computerName,omitempty" tf:"computer_name,omitempty"`
+
+	// The user account of the domain administrator used to join this virtual machine to the domain.
+	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
+
+	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
+	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
+
+	// The full name of the user of this virtual machine.
+	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
+
+	// The domain that the virtual machine should join.
+	JoinDomain *string `json:"joinDomain,omitempty" tf:"join_domain,omitempty"`
+
+	// The organization name this virtual machine is being installed for.
+	OrganizationName *string `json:"organizationName,omitempty" tf:"organization_name,omitempty"`
+
+	// A list of commands to run at first user logon, after guest customization.
+	RunOnceCommandList []*string `json:"runOnceCommandList,omitempty" tf:"run_once_command_list,omitempty"`
+
+	// The new time zone for the virtual machine. This is a sysprep-dictated timezone code.
+	TimeZone *float64 `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
+
+	// The workgroup for this virtual machine if not joining a domain.
+	Workgroup *string `json:"workgroup,omitempty" tf:"workgroup,omitempty"`
+}
+
+type CustomizeWindowsOptionsParameters struct {
+
+	// The new administrator password for this virtual machine.
+	// +kubebuilder:validation:Optional
+	AdminPasswordSecretRef *v1.SecretKeySelector `json:"adminPasswordSecretRef,omitempty" tf:"-"`
+
+	// Specifies whether or not the VM automatically logs on as Administrator.
+	// +kubebuilder:validation:Optional
+	AutoLogon *bool `json:"autoLogon,omitempty" tf:"auto_logon,omitempty"`
+
+	// Specifies how many times the VM should auto-logon the Administrator account when auto_logon is true.
+	// +kubebuilder:validation:Optional
+	AutoLogonCount *float64 `json:"autoLogonCount,omitempty" tf:"auto_logon_count,omitempty"`
+
+	// The host name for this virtual machine.
+	// +kubebuilder:validation:Required
+	ComputerName *string `json:"computerName" tf:"computer_name,omitempty"`
+
+	// The password of the domain administrator used to join this virtual machine to the domain.
+	// +kubebuilder:validation:Optional
+	DomainAdminPasswordSecretRef *v1.SecretKeySelector `json:"domainAdminPasswordSecretRef,omitempty" tf:"-"`
+
+	// The user account of the domain administrator used to join this virtual machine to the domain.
+	// +kubebuilder:validation:Optional
+	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
+
+	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
+	// +kubebuilder:validation:Optional
+	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
+
+	// The full name of the user of this virtual machine.
+	// +kubebuilder:validation:Optional
+	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
+
+	// The domain that the virtual machine should join.
+	// +kubebuilder:validation:Optional
+	JoinDomain *string `json:"joinDomain,omitempty" tf:"join_domain,omitempty"`
+
+	// The organization name this virtual machine is being installed for.
+	// +kubebuilder:validation:Optional
+	OrganizationName *string `json:"organizationName,omitempty" tf:"organization_name,omitempty"`
+
+	// The product key for this virtual machine.
+	// +kubebuilder:validation:Optional
+	ProductKeySecretRef *v1.SecretKeySelector `json:"productKeySecretRef,omitempty" tf:"-"`
+
+	// A list of commands to run at first user logon, after guest customization.
+	// +kubebuilder:validation:Optional
+	RunOnceCommandList []*string `json:"runOnceCommandList,omitempty" tf:"run_once_command_list,omitempty"`
+
+	// The new time zone for the virtual machine. This is a sysprep-dictated timezone code.
+	// +kubebuilder:validation:Optional
+	TimeZone *float64 `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
+
+	// The workgroup for this virtual machine if not joining a domain.
+	// +kubebuilder:validation:Optional
+	Workgroup *string `json:"workgroup,omitempty" tf:"workgroup,omitempty"`
 }
 
 type DiskObservation struct {
@@ -326,92 +507,6 @@ type DiskParameters struct {
 	// If true, writes for this disk are sent directly to the filesystem immediately instead of being buffered.
 	// +kubebuilder:validation:Optional
 	WriteThrough *bool `json:"writeThrough,omitempty" tf:"write_through,omitempty"`
-}
-
-type LinuxOptionsObservation struct {
-
-	// The domain name for this virtual machine.
-	Domain *string `json:"domain,omitempty" tf:"domain,omitempty"`
-
-	// The hostname for this virtual machine.
-	HostName *string `json:"hostName,omitempty" tf:"host_name,omitempty"`
-
-	// Specifies whether or not the hardware clock should be in UTC or not.
-	HwClockUtc *bool `json:"hwClockUtc,omitempty" tf:"hw_clock_utc,omitempty"`
-
-	// Customize the time zone on the VM. This should be a time zone-style entry, like America/Los_Angeles.
-	TimeZone *string `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
-}
-
-type LinuxOptionsParameters struct {
-
-	// The domain name for this virtual machine.
-	// +kubebuilder:validation:Required
-	Domain *string `json:"domain" tf:"domain,omitempty"`
-
-	// The hostname for this virtual machine.
-	// +kubebuilder:validation:Required
-	HostName *string `json:"hostName" tf:"host_name,omitempty"`
-
-	// Specifies whether or not the hardware clock should be in UTC or not.
-	// +kubebuilder:validation:Optional
-	HwClockUtc *bool `json:"hwClockUtc,omitempty" tf:"hw_clock_utc,omitempty"`
-
-	// The customization script to run before and or after guest customization
-	// +kubebuilder:validation:Optional
-	ScriptTextSecretRef *v1.SecretKeySelector `json:"scriptTextSecretRef,omitempty" tf:"-"`
-
-	// Customize the time zone on the VM. This should be a time zone-style entry, like America/Los_Angeles.
-	// +kubebuilder:validation:Optional
-	TimeZone *string `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
-}
-
-type NetworkInterfaceObservation struct {
-
-	// A DNS search domain to add to the DNS configuration on the virtual machine.
-	DNSDomain *string `json:"dnsDomain,omitempty" tf:"dns_domain,omitempty"`
-
-	// Network-interface specific DNS settings for Windows operating systems. Ignored on Linux.
-	DNSServerList []*string `json:"dnsServerList,omitempty" tf:"dns_server_list,omitempty"`
-
-	// The IPv4 address assigned to this network adapter. If left blank, DHCP is used.
-	IPv4Address *string `json:"ipv4Address,omitempty" tf:"ipv4_address,omitempty"`
-
-	// The IPv4 CIDR netmask for the supplied IP address. Ignored if DHCP is selected.
-	IPv4Netmask *float64 `json:"ipv4Netmask,omitempty" tf:"ipv4_netmask,omitempty"`
-
-	// The IPv6 address assigned to this network adapter. If left blank, default auto-configuration is used.
-	IPv6Address *string `json:"ipv6Address,omitempty" tf:"ipv6_address,omitempty"`
-
-	// The IPv6 CIDR netmask for the supplied IP address. Ignored if auto-configuration is selected.
-	IPv6Netmask *float64 `json:"ipv6Netmask,omitempty" tf:"ipv6_netmask,omitempty"`
-}
-
-type NetworkInterfaceParameters struct {
-
-	// A DNS search domain to add to the DNS configuration on the virtual machine.
-	// +kubebuilder:validation:Optional
-	DNSDomain *string `json:"dnsDomain,omitempty" tf:"dns_domain,omitempty"`
-
-	// Network-interface specific DNS settings for Windows operating systems. Ignored on Linux.
-	// +kubebuilder:validation:Optional
-	DNSServerList []*string `json:"dnsServerList,omitempty" tf:"dns_server_list,omitempty"`
-
-	// The IPv4 address assigned to this network adapter. If left blank, DHCP is used.
-	// +kubebuilder:validation:Optional
-	IPv4Address *string `json:"ipv4Address,omitempty" tf:"ipv4_address,omitempty"`
-
-	// The IPv4 CIDR netmask for the supplied IP address. Ignored if DHCP is selected.
-	// +kubebuilder:validation:Optional
-	IPv4Netmask *float64 `json:"ipv4Netmask,omitempty" tf:"ipv4_netmask,omitempty"`
-
-	// The IPv6 address assigned to this network adapter. If left blank, default auto-configuration is used.
-	// +kubebuilder:validation:Optional
-	IPv6Address *string `json:"ipv6Address,omitempty" tf:"ipv6_address,omitempty"`
-
-	// The IPv6 CIDR netmask for the supplied IP address. Ignored if auto-configuration is selected.
-	// +kubebuilder:validation:Optional
-	IPv6Netmask *float64 `json:"ipv6Netmask,omitempty" tf:"ipv6_netmask,omitempty"`
 }
 
 type OvfDeployObservation struct {
@@ -1187,101 +1282,6 @@ type VtpmParameters struct {
 	// The version of the TPM device. Default is 2.0.
 	// +kubebuilder:validation:Optional
 	Version *string `json:"version,omitempty" tf:"version,omitempty"`
-}
-
-type WindowsOptionsObservation struct {
-
-	// Specifies whether or not the VM automatically logs on as Administrator.
-	AutoLogon *bool `json:"autoLogon,omitempty" tf:"auto_logon,omitempty"`
-
-	// Specifies how many times the VM should auto-logon the Administrator account when auto_logon is true.
-	AutoLogonCount *float64 `json:"autoLogonCount,omitempty" tf:"auto_logon_count,omitempty"`
-
-	// The host name for this virtual machine.
-	ComputerName *string `json:"computerName,omitempty" tf:"computer_name,omitempty"`
-
-	// The user account of the domain administrator used to join this virtual machine to the domain.
-	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
-
-	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
-	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
-
-	// The full name of the user of this virtual machine.
-	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
-
-	// The domain that the virtual machine should join.
-	JoinDomain *string `json:"joinDomain,omitempty" tf:"join_domain,omitempty"`
-
-	// The organization name this virtual machine is being installed for.
-	OrganizationName *string `json:"organizationName,omitempty" tf:"organization_name,omitempty"`
-
-	// A list of commands to run at first user logon, after guest customization.
-	RunOnceCommandList []*string `json:"runOnceCommandList,omitempty" tf:"run_once_command_list,omitempty"`
-
-	// The new time zone for the virtual machine. This is a sysprep-dictated timezone code.
-	TimeZone *float64 `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
-
-	// The workgroup for this virtual machine if not joining a domain.
-	Workgroup *string `json:"workgroup,omitempty" tf:"workgroup,omitempty"`
-}
-
-type WindowsOptionsParameters struct {
-
-	// The new administrator password for this virtual machine.
-	// +kubebuilder:validation:Optional
-	AdminPasswordSecretRef *v1.SecretKeySelector `json:"adminPasswordSecretRef,omitempty" tf:"-"`
-
-	// Specifies whether or not the VM automatically logs on as Administrator.
-	// +kubebuilder:validation:Optional
-	AutoLogon *bool `json:"autoLogon,omitempty" tf:"auto_logon,omitempty"`
-
-	// Specifies how many times the VM should auto-logon the Administrator account when auto_logon is true.
-	// +kubebuilder:validation:Optional
-	AutoLogonCount *float64 `json:"autoLogonCount,omitempty" tf:"auto_logon_count,omitempty"`
-
-	// The host name for this virtual machine.
-	// +kubebuilder:validation:Required
-	ComputerName *string `json:"computerName" tf:"computer_name,omitempty"`
-
-	// The password of the domain administrator used to join this virtual machine to the domain.
-	// +kubebuilder:validation:Optional
-	DomainAdminPasswordSecretRef *v1.SecretKeySelector `json:"domainAdminPasswordSecretRef,omitempty" tf:"-"`
-
-	// The user account of the domain administrator used to join this virtual machine to the domain.
-	// +kubebuilder:validation:Optional
-	DomainAdminUser *string `json:"domainAdminUser,omitempty" tf:"domain_admin_user,omitempty"`
-
-	// The MachineObjectOU which specifies the full LDAP path name of the OU to which the virtual machine belongs.
-	// +kubebuilder:validation:Optional
-	DomainOu *string `json:"domainOu,omitempty" tf:"domain_ou,omitempty"`
-
-	// The full name of the user of this virtual machine.
-	// +kubebuilder:validation:Optional
-	FullName *string `json:"fullName,omitempty" tf:"full_name,omitempty"`
-
-	// The domain that the virtual machine should join.
-	// +kubebuilder:validation:Optional
-	JoinDomain *string `json:"joinDomain,omitempty" tf:"join_domain,omitempty"`
-
-	// The organization name this virtual machine is being installed for.
-	// +kubebuilder:validation:Optional
-	OrganizationName *string `json:"organizationName,omitempty" tf:"organization_name,omitempty"`
-
-	// The product key for this virtual machine.
-	// +kubebuilder:validation:Optional
-	ProductKeySecretRef *v1.SecretKeySelector `json:"productKeySecretRef,omitempty" tf:"-"`
-
-	// A list of commands to run at first user logon, after guest customization.
-	// +kubebuilder:validation:Optional
-	RunOnceCommandList []*string `json:"runOnceCommandList,omitempty" tf:"run_once_command_list,omitempty"`
-
-	// The new time zone for the virtual machine. This is a sysprep-dictated timezone code.
-	// +kubebuilder:validation:Optional
-	TimeZone *float64 `json:"timeZone,omitempty" tf:"time_zone,omitempty"`
-
-	// The workgroup for this virtual machine if not joining a domain.
-	// +kubebuilder:validation:Optional
-	Workgroup *string `json:"workgroup,omitempty" tf:"workgroup,omitempty"`
 }
 
 // VSphereVirtualMachineSpec defines the desired state of VSphereVirtualMachine

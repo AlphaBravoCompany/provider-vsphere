@@ -20,20 +20,24 @@ import (
 	vsphereentitypermissions "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_entity_permissions"
 	vspherefile "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_file"
 	vspherefolder "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_folder"
+	vsphereguestoscustomization "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_guest_os_customization"
 	vspherehavmoverride "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_ha_vm_override"
 	vspherehost "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_host"
 	vspherehostportgroup "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_host_port_group"
 	vspherehostvirtualswitch "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_host_virtual_switch"
 	vspherelicense "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_license"
 	vspherenasdatastore "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_nas_datastore"
+	vsphereofflinesoftwaredepot "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_offline_software_depot"
 	vsphereresourcepool "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_resource_pool"
 	vsphererole "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_role"
 	vspherestoragedrsvmoverride "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_storage_drs_vm_override"
+	vspheresupervisor "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_supervisor"
 	vspheretag "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_tag"
 	vspherevappcontainer "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vapp_container"
 	vspherevappentity "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vapp_entity"
 	vspherevirtualdisk "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_virtual_disk"
 	vspherevirtualmachine "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_virtual_machine"
+	vspherevirtualmachineclass "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_virtual_machine_class"
 	vspherevmstoragepolicy "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vm_storage_policy"
 	vspherevmfsdatastore "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vmfs_datastore"
 	vspherevnic "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vnic"
@@ -92,6 +96,10 @@ func GetProvider() *ujconfig.Provider {
 		vspherevappentity.Configure,
 		vspherevirtualdisk.Configure,
 		vspherevirtualmachine.Configure,
+		vsphereofflinesoftwaredepot.Configure,
+		vsphereguestoscustomization.Configure,
+		vspherevirtualmachineclass.Configure,
+		vspheresupervisor.Configure,
 	} {
 		configure(pc)
 	}

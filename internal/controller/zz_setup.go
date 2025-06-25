@@ -28,6 +28,7 @@ import (
 	vspherefolder "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/inventory/vspherefolder"
 	vspheretag "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/inventory/vspheretag"
 	vspheretagcategory "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/inventory/vspheretagcategory"
+	vsphereofflinesoftwaredepot "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/lifecycle/vsphereofflinesoftwaredepot"
 	vspheredistributedportgroup "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/networking/vspheredistributedportgroup"
 	vspheredistributedvirtualswitch "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/networking/vspheredistributedvirtualswitch"
 	vspherehostportgroup "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/networking/vspherehostportgroup"
@@ -44,11 +45,14 @@ import (
 	vspherevmstoragepolicy "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/storage/vspherevmstoragepolicy"
 	vspherecontentlibrary "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherecontentlibrary"
 	vspherecontentlibraryitem "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherecontentlibraryitem"
+	vsphereguestoscustomization "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vsphereguestoscustomization"
 	vspherevappcontainer "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherevappcontainer"
 	vspherevappentity "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherevappentity"
 	vspherevirtualdisk "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherevirtualdisk"
 	vspherevirtualmachine "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherevirtualmachine"
 	vspherevirtualmachinesnapshot "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/virtualmachine/vspherevirtualmachinesnapshot"
+	vspheresupervisor "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/workloadmanagement/vspheresupervisor"
+	vspherevirtualmachineclass "github.com/AlphaBravoCompany/provider-vsphere/internal/controller/workloadmanagement/vspherevirtualmachineclass"
 )
 
 // Setup creates all controllers with the supplied logger and adds them to
@@ -74,6 +78,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		vspherefolder.Setup,
 		vspheretag.Setup,
 		vspheretagcategory.Setup,
+		vsphereofflinesoftwaredepot.Setup,
 		vspheredistributedportgroup.Setup,
 		vspheredistributedvirtualswitch.Setup,
 		vspherehostportgroup.Setup,
@@ -90,11 +95,14 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		vspherevmstoragepolicy.Setup,
 		vspherecontentlibrary.Setup,
 		vspherecontentlibraryitem.Setup,
+		vsphereguestoscustomization.Setup,
 		vspherevappcontainer.Setup,
 		vspherevappentity.Setup,
 		vspherevirtualdisk.Setup,
 		vspherevirtualmachine.Setup,
 		vspherevirtualmachinesnapshot.Setup,
+		vspheresupervisor.Setup,
+		vspherevirtualmachineclass.Setup,
 	} {
 		if err := setup(mgr, o); err != nil {
 			return err
