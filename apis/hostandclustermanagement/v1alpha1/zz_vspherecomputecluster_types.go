@@ -13,6 +13,26 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
+type ComponentObservation struct {
+
+	// The identifier for the component.
+	Key *string `json:"key,omitempty" tf:"key,omitempty"`
+
+	// The version to use.
+	Version *string `json:"version,omitempty" tf:"version,omitempty"`
+}
+
+type ComponentParameters struct {
+
+	// The identifier for the component.
+	// +kubebuilder:validation:Optional
+	Key *string `json:"key,omitempty" tf:"key,omitempty"`
+
+	// The version to use.
+	// +kubebuilder:validation:Optional
+	Version *string `json:"version,omitempty" tf:"version,omitempty"`
+}
+
 type FaultDomainObservation struct {
 
 	// The managed object IDs of the hosts to put in the fault domain.
@@ -31,6 +51,26 @@ type FaultDomainParameters struct {
 	// The name of fault domain.
 	// +kubebuilder:validation:Required
 	Name *string `json:"name" tf:"name,omitempty"`
+}
+
+type HostImageObservation struct {
+
+	// List of custom components.
+	Component []ComponentObservation `json:"component,omitempty" tf:"component,omitempty"`
+
+	// The ESXi version which the image is based on.
+	EsxVersion *string `json:"esxVersion,omitempty" tf:"esx_version,omitempty"`
+}
+
+type HostImageParameters struct {
+
+	// List of custom components.
+	// +kubebuilder:validation:Optional
+	Component []ComponentParameters `json:"component,omitempty" tf:"component,omitempty"`
+
+	// The ESXi version which the image is based on.
+	// +kubebuilder:validation:Optional
+	EsxVersion *string `json:"esxVersion,omitempty" tf:"esx_version,omitempty"`
 }
 
 type VSphereComputeClusterObservation struct {
@@ -169,6 +209,9 @@ type VSphereComputeClusterObservation struct {
 
 	// The timeout for each host maintenance mode operation when removing hosts from a cluster.
 	HostClusterExitTimeout *float64 `json:"hostClusterExitTimeout,omitempty" tf:"host_cluster_exit_timeout,omitempty"`
+
+	// Details about the host image which should be applied to the cluster.
+	HostImage []HostImageObservation `json:"hostImage,omitempty" tf:"host_image,omitempty"`
 
 	// Must be set if cluster enrollment is managed from host resource.
 	HostManaged *bool `json:"hostManaged,omitempty" tf:"host_managed,omitempty"`
@@ -426,6 +469,10 @@ type VSphereComputeClusterParameters struct {
 	// The timeout for each host maintenance mode operation when removing hosts from a cluster.
 	// +kubebuilder:validation:Optional
 	HostClusterExitTimeout *float64 `json:"hostClusterExitTimeout,omitempty" tf:"host_cluster_exit_timeout,omitempty"`
+
+	// Details about the host image which should be applied to the cluster.
+	// +kubebuilder:validation:Optional
+	HostImage []HostImageParameters `json:"hostImage,omitempty" tf:"host_image,omitempty"`
 
 	// Must be set if cluster enrollment is managed from host resource.
 	// +kubebuilder:validation:Optional

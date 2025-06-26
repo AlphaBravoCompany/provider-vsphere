@@ -13,6 +13,41 @@ import (
 	v1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 )
 
+type NtpdObservation struct {
+
+	// Whether the NTP service is enabled. Default is false.
+	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
+
+	NtpServers []*string `json:"ntpServers,omitempty" tf:"ntp_servers,omitempty"`
+
+	// The policy for the NTP service. Valid values are 'Start and stop with host', 'Start and stop manually', 'Start and stop with port usage'.
+	Policy *string `json:"policy,omitempty" tf:"policy,omitempty"`
+}
+
+type NtpdParameters struct {
+
+	// Whether the NTP service is enabled. Default is false.
+	// +kubebuilder:validation:Optional
+	Enabled *bool `json:"enabled,omitempty" tf:"enabled,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	NtpServers []*string `json:"ntpServers,omitempty" tf:"ntp_servers,omitempty"`
+
+	// The policy for the NTP service. Valid values are 'Start and stop with host', 'Start and stop manually', 'Start and stop with port usage'.
+	// +kubebuilder:validation:Optional
+	Policy *string `json:"policy,omitempty" tf:"policy,omitempty"`
+}
+
+type ServicesObservation struct {
+	Ntpd []NtpdObservation `json:"ntpd,omitempty" tf:"ntpd,omitempty"`
+}
+
+type ServicesParameters struct {
+
+	// +kubebuilder:validation:Optional
+	Ntpd []NtpdParameters `json:"ntpd,omitempty" tf:"ntpd,omitempty"`
+}
+
 type VSphereHostObservation struct {
 
 	// ID of the vSphere cluster the host will belong to.
@@ -46,6 +81,8 @@ type VSphereHostObservation struct {
 
 	// Set the host's maintenance mode. Default is false
 	Maintenance *bool `json:"maintenance,omitempty" tf:"maintenance,omitempty"`
+
+	Services []ServicesObservation `json:"services,omitempty" tf:"services,omitempty"`
 
 	// A list of tag IDs to apply to this object.
 	Tags []*string `json:"tags,omitempty" tf:"tags,omitempty"`
@@ -102,6 +139,9 @@ type VSphereHostParameters struct {
 	// Password of the administration account of the host.
 	// +kubebuilder:validation:Optional
 	PasswordSecretRef v1.SecretKeySelector `json:"passwordSecretRef" tf:"-"`
+
+	// +kubebuilder:validation:Optional
+	Services []ServicesParameters `json:"services,omitempty" tf:"services,omitempty"`
 
 	// A list of tag IDs to apply to this object.
 	// +kubebuilder:validation:Optional

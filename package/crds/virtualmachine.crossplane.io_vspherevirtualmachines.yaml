@@ -304,6 +304,11 @@ spec:
                                         administrator used to join this virtual machine
                                         to the domain.
                                       type: string
+                                    domainOu:
+                                      description: The MachineObjectOU which specifies
+                                        the full LDAP path name of the OU to which
+                                        the virtual machine belongs.
+                                      type: string
                                     fullName:
                                       description: The full name of the user of this
                                         virtual machine.
@@ -532,7 +537,7 @@ spec:
                           type: boolean
                         controllerType:
                           description: The type of controller the disk should be connected
-                            to. Must be 'scsi', 'sata', or 'ide'.
+                            to. Must be 'scsi', 'sata', 'nvme', or 'ide'.
                           type: string
                         datastoreId:
                           description: The datastore ID for this virtual disk, if
@@ -691,6 +696,14 @@ spec:
                     description: The amount of memory (in MB) or CPU (in MHz) that
                       this virtual machine is guaranteed.
                     type: number
+                  memoryReservationLockedToMax:
+                    description: If set true, memory resource reservation for this
+                      virtual machine will always be equal to the virtual machine's
+                      memory size;increases in memory size will be rejected when a
+                      corresponding reservation increase is not possible. This feature
+                      may only be enabled if it is currently possible to reserve all
+                      of the virtual machine's memory.
+                    type: boolean
                   memoryShareCount:
                     description: The amount of shares to allocate to memory for a
                       custom share level.
@@ -766,6 +779,11 @@ spec:
                   numCpus:
                     description: The number of virtual processors to assign to this
                       virtual machine.
+                    type: number
+                  nvmeControllerCount:
+                    description: This directly affects the amount of disks you can
+                      add to the virtual machine and the maximum disk unit number.
+                      Note that lowering this value does not remove controllers.
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
@@ -990,6 +1008,16 @@ spec:
                     description: Flag to specify if Virtualization-based security
                       is enabled for this virtual machine.
                     type: boolean
+                  vtpm:
+                    description: A specification for a virtual Trusted Platform Module
+                      (TPM) device on the virtual machine.
+                    items:
+                      properties:
+                        version:
+                          description: The version of the TPM device. Default is 2.0.
+                          type: string
+                      type: object
+                    type: array
                   vvtdEnabled:
                     description: Flag to specify if I/O MMU virtualization, also called
                       Intel Virtualization Technology for Directed I/O (VT-d) and
@@ -1398,6 +1426,11 @@ spec:
                                         administrator used to join this virtual machine
                                         to the domain.
                                       type: string
+                                    domainOu:
+                                      description: The MachineObjectOU which specifies
+                                        the full LDAP path name of the OU to which
+                                        the virtual machine belongs.
+                                      type: string
                                     fullName:
                                       description: The full name of the user of this
                                         virtual machine.
@@ -1513,7 +1546,7 @@ spec:
                           type: boolean
                         controllerType:
                           description: The type of controller the disk should be connected
-                            to. Must be 'scsi', 'sata', or 'ide'.
+                            to. Must be 'scsi', 'sata', 'nvme', or 'ide'.
                           type: string
                         datastoreId:
                           description: The datastore ID for this virtual disk, if
@@ -1694,6 +1727,14 @@ spec:
                     description: The amount of memory (in MB) or CPU (in MHz) that
                       this virtual machine is guaranteed.
                     type: number
+                  memoryReservationLockedToMax:
+                    description: If set true, memory resource reservation for this
+                      virtual machine will always be equal to the virtual machine's
+                      memory size;increases in memory size will be rejected when a
+                      corresponding reservation increase is not possible. This feature
+                      may only be enabled if it is currently possible to reserve all
+                      of the virtual machine's memory.
+                    type: boolean
                   memoryShareCount:
                     description: The amount of shares to allocate to memory for a
                       custom share level.
@@ -1779,6 +1820,11 @@ spec:
                   numCpus:
                     description: The number of virtual processors to assign to this
                       virtual machine.
+                    type: number
+                  nvmeControllerCount:
+                    description: This directly affects the amount of disks you can
+                      add to the virtual machine and the maximum disk unit number.
+                      Note that lowering this value does not remove controllers.
                     type: number
                   ovfDeploy:
                     description: A specification for deploying a virtual machine from
@@ -1950,6 +1996,16 @@ spec:
                     description: The path of the virtual machine's configuration file
                       in the VM's datastore.
                     type: string
+                  vtpm:
+                    description: A specification for a virtual Trusted Platform Module
+                      (TPM) device on the virtual machine.
+                    items:
+                      properties:
+                        version:
+                          description: The version of the TPM device. Default is 2.0.
+                          type: string
+                      type: object
+                    type: array
                   vvtdEnabled:
                     description: Flag to specify if I/O MMU virtualization, also called
                       Intel Virtualization Technology for Directed I/O (VT-d) and

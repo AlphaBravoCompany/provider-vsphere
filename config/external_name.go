@@ -49,6 +49,10 @@ var ExternalNameConfigs = map[string]config.ExternalName{
 	"vsphere_virtual_disk":                            config.IdentifierFromProvider,
 	"vsphere_virtual_machine":                         config.IdentifierFromProvider,
 	"vsphere_virtual_machine_snapshot":                config.IdentifierFromProvider,
+	"vsphere_offline_software_depot":                  config.IdentifierFromProvider,
+	"vsphere_guest_os_customization":                  config.IdentifierFromProvider,
+	"vsphere_supervisor":                              config.IdentifierFromProvider,
+	"vsphere_virtual_machine_class":                  config.IdentifierFromProvider,
 }
 
 // ExternalNameConfigurations applies all external name configs listed in the

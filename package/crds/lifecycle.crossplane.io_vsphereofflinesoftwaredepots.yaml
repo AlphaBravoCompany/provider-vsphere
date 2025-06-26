@@ -5,18 +5,18 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
-  name: vspherehosts.hostandclustermanagement.crossplane.io
+  name: vsphereofflinesoftwaredepots.lifecycle.crossplane.io
 spec:
-  group: hostandclustermanagement.crossplane.io
+  group: lifecycle.crossplane.io
   names:
     categories:
     - crossplane
     - managed
     - vsphere
-    kind: VSphereHost
-    listKind: VSphereHostList
-    plural: vspherehosts
-    singular: vspherehost
+    kind: VSphereOfflineSoftwareDepot
+    listKind: VSphereOfflineSoftwareDepotList
+    plural: vsphereofflinesoftwaredepots
+    singular: vsphereofflinesoftwaredepot
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -35,7 +35,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: VSphereHost is the Schema for the VSphereHosts API. <no value>
+        description: VSphereOfflineSoftwareDepot is the Schema for the VSphereOfflineSoftwareDepots
+          API. <no value>
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -50,7 +51,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: VSphereHostSpec defines the desired state of VSphereHost
+            description: VSphereOfflineSoftwareDepotSpec defines the desired state
+              of VSphereOfflineSoftwareDepot
             properties:
               deletionPolicy:
                 default: Delete
@@ -67,94 +69,9 @@ spec:
                 type: string
               forProvider:
                 properties:
-                  cluster:
-                    description: ID of the vSphere cluster the host will belong to.
-                    type: string
-                  clusterManaged:
-                    description: Must be set if host is a member of a managed compute_cluster
-                      resource.
-                    type: boolean
-                  connected:
-                    description: Set the state of the host. If set to false then the
-                      host will be asked to disconnect.
-                    type: boolean
-                  customAttributes:
-                    additionalProperties:
-                      type: string
-                    description: A list of custom attributes to set on this resource.
-                    type: object
-                  datacenter:
-                    description: ID of the vSphere datacenter the host will belong
-                      to.
-                    type: string
-                  force:
-                    description: Force add the host to the vSphere inventory even
-                      if it's already managed by a different vCenter Server instance.
-                    type: boolean
-                  hostname:
-                    description: FQDN or IP address of the host.
-                    type: string
-                  license:
-                    description: License key that will be applied to this host.
-                    type: string
-                  lockdown:
-                    description: Set the host's lockdown status. Default is disabled.
-                      Valid options are 'disabled', 'normal', 'strict'
-                    type: string
-                  maintenance:
-                    description: Set the host's maintenance mode. Default is false
-                    type: boolean
-                  passwordSecretRef:
-                    description: Password of the administration account of the host.
-                    properties:
-                      key:
-                        description: The key to select.
-                        type: string
-                      name:
-                        description: Name of the secret.
-                        type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
-                  services:
-                    items:
-                      properties:
-                        ntpd:
-                          items:
-                            properties:
-                              enabled:
-                                description: Whether the NTP service is enabled. Default
-                                  is false.
-                                type: boolean
-                              ntpServers:
-                                items:
-                                  type: string
-                                type: array
-                              policy:
-                                description: The policy for the NTP service. Valid
-                                  values are 'Start and stop with host', 'Start and
-                                  stop manually', 'Start and stop with port usage'.
-                                type: string
-                            type: object
-                          type: array
-                      type: object
-                    type: array
-                  tags:
-                    description: A list of tag IDs to apply to this object.
-                    items:
-                      type: string
-                    type: array
-                  thumbprint:
-                    description: Host's certificate SHA-1 thumbprint. If not set then
-                      the CA that signed the host's certificate must be trusted.
-                    type: string
-                  username:
-                    description: Username of the administration account of the host.
+                  location:
+                    description: The remote location where the contents for this depot
+                      are served.
                     type: string
                 type: object
               managementPolicy:
@@ -344,90 +261,33 @@ spec:
             - forProvider
             type: object
             x-kubernetes-validations:
-            - message: hostname is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.hostname)
-            - message: passwordSecretRef is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.passwordSecretRef)
-            - message: username is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.username)
+            - message: location is a required parameter
+              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.location)
           status:
-            description: VSphereHostStatus defines the observed state of VSphereHost.
+            description: VSphereOfflineSoftwareDepotStatus defines the observed state
+              of VSphereOfflineSoftwareDepot.
             properties:
               atProvider:
                 properties:
-                  cluster:
-                    description: ID of the vSphere cluster the host will belong to.
-                    type: string
-                  clusterManaged:
-                    description: Must be set if host is a member of a managed compute_cluster
-                      resource.
-                    type: boolean
-                  connected:
-                    description: Set the state of the host. If set to false then the
-                      host will be asked to disconnect.
-                    type: boolean
-                  customAttributes:
-                    additionalProperties:
-                      type: string
-                    description: A list of custom attributes to set on this resource.
-                    type: object
-                  datacenter:
-                    description: ID of the vSphere datacenter the host will belong
-                      to.
-                    type: string
-                  force:
-                    description: Force add the host to the vSphere inventory even
-                      if it's already managed by a different vCenter Server instance.
-                    type: boolean
-                  hostname:
-                    description: FQDN or IP address of the host.
-                    type: string
-                  id:
-                    type: string
-                  license:
-                    description: License key that will be applied to this host.
-                    type: string
-                  lockdown:
-                    description: Set the host's lockdown status. Default is disabled.
-                      Valid options are 'disabled', 'normal', 'strict'
-                    type: string
-                  maintenance:
-                    description: Set the host's maintenance mode. Default is false
-                    type: boolean
-                  services:
+                  component:
+                    description: The list of components in this depot.
                     items:
                       properties:
-                        ntpd:
+                        displayName:
+                          type: string
+                        key:
+                          type: string
+                        version:
                           items:
-                            properties:
-                              enabled:
-                                description: Whether the NTP service is enabled. Default
-                                  is false.
-                                type: boolean
-                              ntpServers:
-                                items:
-                                  type: string
-                                type: array
-                              policy:
-                                description: The policy for the NTP service. Valid
-                                  values are 'Start and stop with host', 'Start and
-                                  stop manually', 'Start and stop with port usage'.
-                                type: string
-                            type: object
+                            type: string
                           type: array
                       type: object
                     type: array
-                  tags:
-                    description: A list of tag IDs to apply to this object.
-                    items:
-                      type: string
-                    type: array
-                  thumbprint:
-                    description: Host's certificate SHA-1 thumbprint. If not set then
-                      the CA that signed the host's certificate must be trusted.
+                  id:
                     type: string
-                  username:
-                    description: Username of the administration account of the host.
+                  location:
+                    description: The remote location where the contents for this depot
+                      are served.
                     type: string
                 type: object
               conditions:

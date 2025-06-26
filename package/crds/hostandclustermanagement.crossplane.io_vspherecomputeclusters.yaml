@@ -297,6 +297,28 @@ spec:
                     description: The timeout for each host maintenance mode operation
                       when removing hosts from a cluster.
                     type: number
+                  hostImage:
+                    description: Details about the host image which should be applied
+                      to the cluster.
+                    items:
+                      properties:
+                        component:
+                          description: List of custom components.
+                          items:
+                            properties:
+                              key:
+                                description: The identifier for the component.
+                                type: string
+                              version:
+                                description: The version to use.
+                                type: string
+                            type: object
+                          type: array
+                        esxVersion:
+                          description: The ESXi version which the image is based on.
+                          type: string
+                      type: object
+                    type: array
                   hostManaged:
                     description: Must be set if cluster enrollment is managed from
                       host resource.
@@ -882,6 +904,28 @@ spec:
                     description: The timeout for each host maintenance mode operation
                       when removing hosts from a cluster.
                     type: number
+                  hostImage:
+                    description: Details about the host image which should be applied
+                      to the cluster.
+                    items:
+                      properties:
+                        component:
+                          description: List of custom components.
+                          items:
+                            properties:
+                              key:
+                                description: The identifier for the component.
+                                type: string
+                              version:
+                                description: The version to use.
+                                type: string
+                            type: object
+                          type: array
+                        esxVersion:
+                          description: The ESXi version which the image is based on.
+                          type: string
+                      type: object
+                    type: array
                   hostManaged:
                     description: Must be set if cluster enrollment is managed from
                       host resource.
