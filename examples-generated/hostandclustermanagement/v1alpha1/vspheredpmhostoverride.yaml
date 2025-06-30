@@ -1,0 +1,33 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereDpmHostOverride
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspheredpmhostoverride
+  labels:
+    testing.upbound.io/example-name: dpm_host_override
+  name: dpm-host-override
+spec:
+  forProvider:
+    computeClusterId: ${vsphere_compute_cluster.compute_cluster.id}
+    dpmAutomationLevel: automated
+    dpmEnabled: true
+    hostSystemId: ${data.vsphere_host.hosts.0.id}
+
+---
+
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeCluster
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspheredpmhostoverride
+  labels:
+    testing.upbound.io/example-name: compute_cluster
+  name: compute-cluster
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    drsAutomationLevel: fullyAutomated
+    drsEnabled: true
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-compute-cluster-test

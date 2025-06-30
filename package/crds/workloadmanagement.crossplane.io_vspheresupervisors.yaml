@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vspheresupervisors.workloadmanagement.crossplane.io
 spec:
   group: workloadmanagement.crossplane.io
@@ -20,11 +19,11 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.conditions[?(@.type=='Ready')].status
-      name: READY
-      type: string
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
       type: string
     - jsonPath: .metadata.annotations.crossplane\.io/external-name
       name: EXTERNAL-NAME
@@ -36,17 +35,22 @@ spec:
     schema:
       openAPIV3Schema:
         description: VSphereSupervisor is the Schema for the VSphereSupervisors API.
-          <no value>
+          Provides a VMware vSphere Supervisor resource..
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -55,13 +59,14 @@ spec:
             properties:
               deletionPolicy:
                 default: Delete
-                description: 'DeletionPolicy specifies what will happen to the underlying
-                  external when this managed resource is deleted - either "Delete"
-                  or "Orphan" the external resource. This field is planned to be deprecated
-                  in favor of the ManagementPolicy field in a future release. Currently,
-                  both could be set independently and non-default values would be
-                  honored if the feature flag is enabled. See the design doc for more
-                  information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223'
+                description: |-
+                  DeletionPolicy specifies what will happen to the underlying external
+                  when this managed resource is deleted - either "Delete" or "Orphan" the
+                  external resource.
+                  This field is planned to be deprecated in favor of the ManagementPolicies
+                  field in a future release. Currently, both could be set independently and
+                  non-default values would be honored if the feature flag is enabled.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
                 enum:
                 - Orphan
                 - Delete
@@ -69,21 +74,29 @@ spec:
               forProvider:
                 properties:
                   cluster:
-                    description: ID of the vSphere cluster on which workload management
-                      will be enabled.
+                    description: |-
+                      The identifier of the compute cluster.
+                      ID of the vSphere cluster on which workload management will be enabled.
                     type: string
                   contentLibrary:
-                    description: ID of the subscribed content library.
+                    description: |-
+                      The identifier of the subscribed content library.
+                      ID of the subscribed content library.
                     type: string
                   dvsUuid:
-                    description: The UUID (not ID) of the distributed switch.
+                    description: |-
+                      The UUID of the distributed switch.
+                      The UUID (not ID) of the distributed switch.
                     type: string
                   edgeCluster:
-                    description: ID of the NSX Edge Cluster.
+                    description: |-
+                      The identifier of the NSX Edge Cluster.
+                      ID of the NSX Edge Cluster.
                     type: string
                   egressCidr:
-                    description: CIDR blocks from which NSX assigns IP addresses used
-                      for performing SNAT from container IPs to external IPs.
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
                     items:
                       properties:
                         address:
@@ -92,14 +105,12 @@ spec:
                         prefix:
                           description: Subnet prefix.
                           type: number
-                      required:
-                      - address
-                      - prefix
                       type: object
                     type: array
                   ingressCidr:
-                    description: CIDR blocks from which NSX assigns IP addresses for
-                      Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
                     items:
                       properties:
                         address:
@@ -108,78 +119,86 @@ spec:
                         prefix:
                           description: Subnet prefix.
                           type: number
-                      required:
-                      - address
-                      - prefix
                       type: object
                     type: array
                   mainDns:
-                    description: List of DNS servers to use on the Kubernetes API
-                      server.
+                    description: |-
+                      The list of addresses of the primary DNS servers.
+                      List of DNS servers to use on the Kubernetes API server.
                     items:
                       type: string
                     type: array
                   mainNtp:
-                    description: List of NTP servers to use on the Kubernetes API
-                      server.
+                    description: |-
+                      The list of addresses of the primary NTP servers.
+                      List of NTP servers to use on the Kubernetes API server.
                     items:
                       type: string
                     type: array
                   managementNetwork:
-                    description: The configuration for the management network which
-                      the control plane VMs will be connected to.
+                    description: |-
+                      The configuration for the management network which the control plane VMs will be connected to.
+                      The configuration for the management network which the control plane VMs will be connected to.
                     items:
                       properties:
                         addressCount:
-                          description: Number of addresses to allocate. Starts from
-                            'starting_address'
+                          description: |-
+                            Number of addresses to allocate. Starts from starting_address
+                            Number of addresses to allocate. Starts from 'starting_address'
                           type: number
                         gateway:
-                          description: Gateway IP address.
+                          description: |-
+                            Gateway IP address.
+                            Gateway IP address.
                           type: string
                         network:
-                          description: ID of the network. (e.g. a distributed port
-                            group).
+                          description: |-
+                            ID of the network. (e.g. a distributed port group).
+                            ID of the network. (e.g. a distributed port group).
                           type: string
                         startingAddress:
-                          description: Starting address of the management network
-                            range.
+                          description: |-
+                            Starting address of the management network range.
+                            Starting address of the management network range.
                           type: string
                         subnetMask:
-                          description: Subnet mask.
+                          description: |-
+                            Subnet mask.
+                            Subnet mask.
                           type: string
-                      required:
-                      - addressCount
-                      - gateway
-                      - network
-                      - startingAddress
-                      - subnetMask
                       type: object
                     type: array
                   namespace:
-                    description: List of namespaces associated with the cluster.
+                    description: |-
+                      The list of namespaces to create in the Supervisor cluster
+                      List of namespaces associated with the cluster.
                     items:
                       properties:
                         contentLibraries:
-                          description: A list of content libraries.
+                          description: |-
+                            The list of content libraries to associate with the namespace
+                            A list of content libraries.
                           items:
                             type: string
                           type: array
                         name:
-                          description: The name of the namespace.
+                          description: |-
+                            The name of the namespace
+                            The name of the namespace.
                           type: string
                         vmClasses:
-                          description: A list of virtual machine classes.
+                          description: |-
+                            The list of virtual machine classes to add to the namespace
+                            A list of virtual machine classes.
                           items:
                             type: string
                           type: array
-                      required:
-                      - name
                       type: object
                     type: array
                   podCidr:
-                    description: CIDR blocks from which Kubernetes allocates pod IP
-                      addresses. Minimum subnet size is 23.
+                    description: |-
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
                     items:
                       properties:
                         address:
@@ -188,19 +207,19 @@ spec:
                         prefix:
                           description: Subnet prefix.
                           type: number
-                      required:
-                      - address
-                      - prefix
                       type: object
                     type: array
                   searchDomains:
-                    description: List of DNS search domains.
+                    description: |-
+                      List of DNS search domains.
+                      List of DNS search domains.
                     items:
                       type: string
                     type: array
                   serviceCidr:
-                    description: CIDR block from which Kubernetes allocates service
-                      cluster IP addresses.
+                    description: |-
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
                     items:
                       properties:
                         address:
@@ -209,50 +228,262 @@ spec:
                         prefix:
                           description: Subnet prefix.
                           type: number
-                      required:
-                      - address
-                      - prefix
                       type: object
                     type: array
                   sizingHint:
-                    description: Size of the Kubernetes API server.
+                    description: |-
+                      The size of the Kubernetes API server.
+                      Size of the Kubernetes API server.
                     type: string
                   storagePolicy:
-                    description: The name of a storage policy associated with the
-                      datastore where the container images will be stored.
+                    description: |-
+                      The name of the storage policy.
+                      The name of a storage policy associated with the datastore where the container images will be stored.
                     type: string
                   workerDns:
-                    description: List of DNS servers to use on the worker nodes.
+                    description: |-
+                      The list of addresses of the DNS servers to use for the worker nodes.
+                      List of DNS servers to use on the worker nodes.
                     items:
                       type: string
                     type: array
                   workerNtp:
-                    description: List of NTP servers to use on the worker nodes.
+                    description: |-
+                      The list of addresses of the NTP servers to use for the worker nodes.
+                      List of NTP servers to use on the worker nodes.
                     items:
                       type: string
                     type: array
                 type: object
-              managementPolicy:
-                default: FullControl
-                description: 'THIS IS AN ALPHA FIELD. Do not use it in production.
-                  It is not honored unless the relevant Crossplane feature flag is
-                  enabled, and may be changed or removed without notice. ManagementPolicy
-                  specifies the level of control Crossplane has over the managed external
-                  resource. This field is planned to replace the DeletionPolicy field
-                  in a future release. Currently, both could be set independently
-                  and non-default values would be honored if the feature flag is enabled.
-                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223'
-                enum:
-                - FullControl
-                - ObserveOnly
-                - OrphanOnDelete
-                type: string
+              initProvider:
+                description: |-
+                  THIS IS A BETA FIELD. It will be honored
+                  unless the Management Policies feature flag is disabled.
+                  InitProvider holds the same fields as ForProvider, with the exception
+                  of Identifier and other resource reference fields. The fields that are
+                  in InitProvider are merged into ForProvider when the resource is created.
+                  The same fields are also added to the terraform ignore_changes hook, to
+                  avoid updating them after creation. This is useful for fields that are
+                  required on creation, but we do not desire to update them after creation,
+                  for example because of an external controller is managing them, like an
+                  autoscaler.
+                properties:
+                  cluster:
+                    description: |-
+                      The identifier of the compute cluster.
+                      ID of the vSphere cluster on which workload management will be enabled.
+                    type: string
+                  contentLibrary:
+                    description: |-
+                      The identifier of the subscribed content library.
+                      ID of the subscribed content library.
+                    type: string
+                  dvsUuid:
+                    description: |-
+                      The UUID of the distributed switch.
+                      The UUID (not ID) of the distributed switch.
+                    type: string
+                  edgeCluster:
+                    description: |-
+                      The identifier of the NSX Edge Cluster.
+                      ID of the NSX Edge Cluster.
+                    type: string
+                  egressCidr:
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
+                    items:
+                      properties:
+                        address:
+                          description: Network address.
+                          type: string
+                        prefix:
+                          description: Subnet prefix.
+                          type: number
+                      type: object
+                    type: array
+                  ingressCidr:
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                    items:
+                      properties:
+                        address:
+                          description: Network address.
+                          type: string
+                        prefix:
+                          description: Subnet prefix.
+                          type: number
+                      type: object
+                    type: array
+                  mainDns:
+                    description: |-
+                      The list of addresses of the primary DNS servers.
+                      List of DNS servers to use on the Kubernetes API server.
+                    items:
+                      type: string
+                    type: array
+                  mainNtp:
+                    description: |-
+                      The list of addresses of the primary NTP servers.
+                      List of NTP servers to use on the Kubernetes API server.
+                    items:
+                      type: string
+                    type: array
+                  managementNetwork:
+                    description: |-
+                      The configuration for the management network which the control plane VMs will be connected to.
+                      The configuration for the management network which the control plane VMs will be connected to.
+                    items:
+                      properties:
+                        addressCount:
+                          description: |-
+                            Number of addresses to allocate. Starts from starting_address
+                            Number of addresses to allocate. Starts from 'starting_address'
+                          type: number
+                        gateway:
+                          description: |-
+                            Gateway IP address.
+                            Gateway IP address.
+                          type: string
+                        network:
+                          description: |-
+                            ID of the network. (e.g. a distributed port group).
+                            ID of the network. (e.g. a distributed port group).
+                          type: string
+                        startingAddress:
+                          description: |-
+                            Starting address of the management network range.
+                            Starting address of the management network range.
+                          type: string
+                        subnetMask:
+                          description: |-
+                            Subnet mask.
+                            Subnet mask.
+                          type: string
+                      type: object
+                    type: array
+                  namespace:
+                    description: |-
+                      The list of namespaces to create in the Supervisor cluster
+                      List of namespaces associated with the cluster.
+                    items:
+                      properties:
+                        contentLibraries:
+                          description: |-
+                            The list of content libraries to associate with the namespace
+                            A list of content libraries.
+                          items:
+                            type: string
+                          type: array
+                        name:
+                          description: |-
+                            The name of the namespace
+                            The name of the namespace.
+                          type: string
+                        vmClasses:
+                          description: |-
+                            The list of virtual machine classes to add to the namespace
+                            A list of virtual machine classes.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    type: array
+                  podCidr:
+                    description: |-
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
+                    items:
+                      properties:
+                        address:
+                          description: Network address.
+                          type: string
+                        prefix:
+                          description: Subnet prefix.
+                          type: number
+                      type: object
+                    type: array
+                  searchDomains:
+                    description: |-
+                      List of DNS search domains.
+                      List of DNS search domains.
+                    items:
+                      type: string
+                    type: array
+                  serviceCidr:
+                    description: |-
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
+                    items:
+                      properties:
+                        address:
+                          description: Network address.
+                          type: string
+                        prefix:
+                          description: Subnet prefix.
+                          type: number
+                      type: object
+                    type: array
+                  sizingHint:
+                    description: |-
+                      The size of the Kubernetes API server.
+                      Size of the Kubernetes API server.
+                    type: string
+                  storagePolicy:
+                    description: |-
+                      The name of the storage policy.
+                      The name of a storage policy associated with the datastore where the container images will be stored.
+                    type: string
+                  workerDns:
+                    description: |-
+                      The list of addresses of the DNS servers to use for the worker nodes.
+                      List of DNS servers to use on the worker nodes.
+                    items:
+                      type: string
+                    type: array
+                  workerNtp:
+                    description: |-
+                      The list of addresses of the NTP servers to use for the worker nodes.
+                      List of NTP servers to use on the worker nodes.
+                    items:
+                      type: string
+                    type: array
+                type: object
+              managementPolicies:
+                default:
+                - '*'
+                description: |-
+                  THIS IS A BETA FIELD. It is on by default but can be opted out
+                  through a Crossplane feature flag.
+                  ManagementPolicies specify the array of actions Crossplane is allowed to
+                  take on the managed and external resources.
+                  This field is planned to replace the DeletionPolicy field in a future
+                  release. Currently, both could be set independently and non-default
+                  values would be honored if the feature flag is enabled. If both are
+                  custom, the DeletionPolicy field will be ignored.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                  and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                items:
+                  description: |-
+                    A ManagementAction represents an action that the Crossplane controllers
+                    can take on an external resource.
+                  enum:
+                  - Observe
+                  - Create
+                  - Update
+                  - Delete
+                  - LateInitialize
+                  - '*'
+                  type: string
+                type: array
               providerConfigRef:
                 default:
                   name: default
-                description: ProviderConfigReference specifies how the provider that
-                  will be used to create, observe, update, and delete this managed
-                  resource should be configured.
+                description: |-
+                  ProviderConfigReference specifies how the provider that will be used to
+                  create, observe, update, and delete this managed resource should be
+                  configured.
                 properties:
                   name:
                     description: Name of the referenced object.
@@ -262,57 +493,21 @@ spec:
                     properties:
                       resolution:
                         default: Required
-                        description: Resolution specifies whether resolution of this
-                          reference is required. The default is 'Required', which
-                          means the reconcile will fail if the reference cannot be
-                          resolved. 'Optional' means this reference will be a no-op
-                          if it cannot be resolved.
+                        description: |-
+                          Resolution specifies whether resolution of this reference is required.
+                          The default is 'Required', which means the reconcile will fail if the
+                          reference cannot be resolved. 'Optional' means this reference will be
+                          a no-op if it cannot be resolved.
                         enum:
                         - Required
                         - Optional
                         type: string
                       resolve:
-                        description: Resolve specifies when this reference should
-                          be resolved. The default is 'IfNotPresent', which will attempt
-                          to resolve the reference only when the corresponding field
-                          is not present. Use 'Always' to resolve the reference on
-                          every reconcile.
-                        enum:
-                        - Always
-                        - IfNotPresent
-                        type: string
-                    type: object
-                required:
-                - name
-                type: object
-              providerRef:
-                description: 'ProviderReference specifies the provider that will be
-                  used to create, observe, update, and delete this managed resource.
-                  Deprecated: Please use ProviderConfigReference, i.e. `providerConfigRef`'
-                properties:
-                  name:
-                    description: Name of the referenced object.
-                    type: string
-                  policy:
-                    description: Policies for referencing.
-                    properties:
-                      resolution:
-                        default: Required
-                        description: Resolution specifies whether resolution of this
-                          reference is required. The default is 'Required', which
-                          means the reconcile will fail if the reference cannot be
-                          resolved. 'Optional' means this reference will be a no-op
-                          if it cannot be resolved.
-                        enum:
-                        - Required
-                        - Optional
-                        type: string
-                      resolve:
-                        description: Resolve specifies when this reference should
-                          be resolved. The default is 'IfNotPresent', which will attempt
-                          to resolve the reference only when the corresponding field
-                          is not present. Use 'Always' to resolve the reference on
-                          every reconcile.
+                        description: |-
+                          Resolve specifies when this reference should be resolved. The default
+                          is 'IfNotPresent', which will attempt to resolve the reference only when
+                          the corresponding field is not present. Use 'Always' to resolve the
+                          reference on every reconcile.
                         enum:
                         - Always
                         - IfNotPresent
@@ -322,17 +517,19 @@ spec:
                 - name
                 type: object
               publishConnectionDetailsTo:
-                description: PublishConnectionDetailsTo specifies the connection secret
-                  config which contains a name, metadata and a reference to secret
-                  store config to which any connection details for this managed resource
-                  should be written. Connection details frequently include the endpoint,
-                  username, and password required to connect to the managed resource.
+                description: |-
+                  PublishConnectionDetailsTo specifies the connection secret config which
+                  contains a name, metadata and a reference to secret store config to
+                  which any connection details for this managed resource should be written.
+                  Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
                 properties:
                   configRef:
                     default:
                       name: default
-                    description: SecretStoreConfigRef specifies which secret store
-                      config should be used for this ConnectionSecret.
+                    description: |-
+                      SecretStoreConfigRef specifies which secret store config should be used
+                      for this ConnectionSecret.
                     properties:
                       name:
                         description: Name of the referenced object.
@@ -342,21 +539,21 @@ spec:
                         properties:
                           resolution:
                             default: Required
-                            description: Resolution specifies whether resolution of
-                              this reference is required. The default is 'Required',
-                              which means the reconcile will fail if the reference
-                              cannot be resolved. 'Optional' means this reference
-                              will be a no-op if it cannot be resolved.
+                            description: |-
+                              Resolution specifies whether resolution of this reference is required.
+                              The default is 'Required', which means the reconcile will fail if the
+                              reference cannot be resolved. 'Optional' means this reference will be
+                              a no-op if it cannot be resolved.
                             enum:
                             - Required
                             - Optional
                             type: string
                           resolve:
-                            description: Resolve specifies when this reference should
-                              be resolved. The default is 'IfNotPresent', which will
-                              attempt to resolve the reference only when the corresponding
-                              field is not present. Use 'Always' to resolve the reference
-                              on every reconcile.
+                            description: |-
+                              Resolve specifies when this reference should be resolved. The default
+                              is 'IfNotPresent', which will attempt to resolve the reference only when
+                              the corresponding field is not present. Use 'Always' to resolve the
+                              reference on every reconcile.
                             enum:
                             - Always
                             - IfNotPresent
@@ -371,21 +568,22 @@ spec:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: Annotations are the annotations to be added to
-                          connection secret. - For Kubernetes secrets, this will be
-                          used as "metadata.annotations". - It is up to Secret Store
-                          implementation for others store types.
+                        description: |-
+                          Annotations are the annotations to be added to connection secret.
+                          - For Kubernetes secrets, this will be used as "metadata.annotations".
+                          - It is up to Secret Store implementation for others store types.
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: Labels are the labels/tags to be added to connection
-                          secret. - For Kubernetes secrets, this will be used as "metadata.labels".
-                          - It is up to Secret Store implementation for others store
-                          types.
+                        description: |-
+                          Labels are the labels/tags to be added to connection secret.
+                          - For Kubernetes secrets, this will be used as "metadata.labels".
+                          - It is up to Secret Store implementation for others store types.
                         type: object
                       type:
-                        description: Type is the SecretType for the connection secret.
+                        description: |-
+                          Type is the SecretType for the connection secret.
                           - Only valid for Kubernetes Secret Stores.
                         type: string
                     type: object
@@ -396,14 +594,15 @@ spec:
                 - name
                 type: object
               writeConnectionSecretToRef:
-                description: WriteConnectionSecretToReference specifies the namespace
-                  and name of a Secret to which any connection details for this managed
-                  resource should be written. Connection details frequently include
-                  the endpoint, username, and password required to connect to the
-                  managed resource. This field is planned to be replaced in a future
-                  release in favor of PublishConnectionDetailsTo. Currently, both
-                  could be set independently and connection details would be published
-                  to both without affecting each other.
+                description: |-
+                  WriteConnectionSecretToReference specifies the namespace and name of a
+                  Secret to which any connection details for this managed resource should
+                  be written. Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
+                  This field is planned to be replaced in a future release in favor of
+                  PublishConnectionDetailsTo. Currently, both could be set independently
+                  and connection details would be published to both without affecting
+                  each other.
                 properties:
                   name:
                     description: Name of the secret.
@@ -419,59 +618,99 @@ spec:
             - forProvider
             type: object
             x-kubernetes-validations:
-            - message: cluster is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.cluster)
-            - message: contentLibrary is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.contentLibrary)
-            - message: dvsUuid is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.dvsUuid)
-            - message: edgeCluster is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.edgeCluster)
-            - message: egressCidr is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.egressCidr)
-            - message: ingressCidr is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.ingressCidr)
-            - message: mainDns is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.mainDns)
-            - message: mainNtp is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.mainNtp)
-            - message: managementNetwork is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.managementNetwork)
-            - message: podCidr is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.podCidr)
-            - message: searchDomains is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.searchDomains)
-            - message: serviceCidr is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.serviceCidr)
-            - message: sizingHint is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.sizingHint)
-            - message: storagePolicy is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.storagePolicy)
-            - message: workerDns is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.workerDns)
-            - message: workerNtp is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.workerNtp)
+            - message: spec.forProvider.cluster is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.cluster)
+                || (has(self.initProvider) && has(self.initProvider.cluster))'
+            - message: spec.forProvider.contentLibrary is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.contentLibrary)
+                || (has(self.initProvider) && has(self.initProvider.contentLibrary))'
+            - message: spec.forProvider.dvsUuid is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.dvsUuid)
+                || (has(self.initProvider) && has(self.initProvider.dvsUuid))'
+            - message: spec.forProvider.edgeCluster is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.edgeCluster)
+                || (has(self.initProvider) && has(self.initProvider.edgeCluster))'
+            - message: spec.forProvider.egressCidr is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.egressCidr)
+                || (has(self.initProvider) && has(self.initProvider.egressCidr))'
+            - message: spec.forProvider.ingressCidr is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.ingressCidr)
+                || (has(self.initProvider) && has(self.initProvider.ingressCidr))'
+            - message: spec.forProvider.mainDns is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.mainDns)
+                || (has(self.initProvider) && has(self.initProvider.mainDns))'
+            - message: spec.forProvider.mainNtp is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.mainNtp)
+                || (has(self.initProvider) && has(self.initProvider.mainNtp))'
+            - message: spec.forProvider.managementNetwork is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.managementNetwork)
+                || (has(self.initProvider) && has(self.initProvider.managementNetwork))'
+            - message: spec.forProvider.podCidr is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.podCidr)
+                || (has(self.initProvider) && has(self.initProvider.podCidr))'
+            - message: spec.forProvider.searchDomains is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.searchDomains)
+                || (has(self.initProvider) && has(self.initProvider.searchDomains))'
+            - message: spec.forProvider.serviceCidr is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.serviceCidr)
+                || (has(self.initProvider) && has(self.initProvider.serviceCidr))'
+            - message: spec.forProvider.sizingHint is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.sizingHint)
+                || (has(self.initProvider) && has(self.initProvider.sizingHint))'
+            - message: spec.forProvider.storagePolicy is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.storagePolicy)
+                || (has(self.initProvider) && has(self.initProvider.storagePolicy))'
+            - message: spec.forProvider.workerDns is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.workerDns)
+                || (has(self.initProvider) && has(self.initProvider.workerDns))'
+            - message: spec.forProvider.workerNtp is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.workerNtp)
+                || (has(self.initProvider) && has(self.initProvider.workerNtp))'
           status:
             description: VSphereSupervisorStatus defines the observed state of VSphereSupervisor.
             properties:
               atProvider:
                 properties:
                   cluster:
-                    description: ID of the vSphere cluster on which workload management
-                      will be enabled.
+                    description: |-
+                      The identifier of the compute cluster.
+                      ID of the vSphere cluster on which workload management will be enabled.
                     type: string
                   contentLibrary:
-                    description: ID of the subscribed content library.
+                    description: |-
+                      The identifier of the subscribed content library.
+                      ID of the subscribed content library.
                     type: string
                   dvsUuid:
-                    description: The UUID (not ID) of the distributed switch.
+                    description: |-
+                      The UUID of the distributed switch.
+                      The UUID (not ID) of the distributed switch.
                     type: string
                   edgeCluster:
-                    description: ID of the NSX Edge Cluster.
+                    description: |-
+                      The identifier of the NSX Edge Cluster.
+                      ID of the NSX Edge Cluster.
                     type: string
                   egressCidr:
-                    description: CIDR blocks from which NSX assigns IP addresses used
-                      for performing SNAT from container IPs to external IPs.
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
+                      CIDR blocks from which NSX assigns IP addresses used for performing SNAT from container IPs to external IPs.
                     items:
                       properties:
                         address:
@@ -485,8 +724,9 @@ spec:
                   id:
                     type: string
                   ingressCidr:
-                    description: CIDR blocks from which NSX assigns IP addresses for
-                      Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                    description: |-
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
+                      CIDR blocks from which NSX assigns IP addresses for Kubernetes Ingresses and Kubernetes Services of type LoadBalancer.
                     items:
                       properties:
                         address:
@@ -498,64 +738,83 @@ spec:
                       type: object
                     type: array
                   mainDns:
-                    description: List of DNS servers to use on the Kubernetes API
-                      server.
+                    description: |-
+                      The list of addresses of the primary DNS servers.
+                      List of DNS servers to use on the Kubernetes API server.
                     items:
                       type: string
                     type: array
                   mainNtp:
-                    description: List of NTP servers to use on the Kubernetes API
-                      server.
+                    description: |-
+                      The list of addresses of the primary NTP servers.
+                      List of NTP servers to use on the Kubernetes API server.
                     items:
                       type: string
                     type: array
                   managementNetwork:
-                    description: The configuration for the management network which
-                      the control plane VMs will be connected to.
+                    description: |-
+                      The configuration for the management network which the control plane VMs will be connected to.
+                      The configuration for the management network which the control plane VMs will be connected to.
                     items:
                       properties:
                         addressCount:
-                          description: Number of addresses to allocate. Starts from
-                            'starting_address'
+                          description: |-
+                            Number of addresses to allocate. Starts from starting_address
+                            Number of addresses to allocate. Starts from 'starting_address'
                           type: number
                         gateway:
-                          description: Gateway IP address.
+                          description: |-
+                            Gateway IP address.
+                            Gateway IP address.
                           type: string
                         network:
-                          description: ID of the network. (e.g. a distributed port
-                            group).
+                          description: |-
+                            ID of the network. (e.g. a distributed port group).
+                            ID of the network. (e.g. a distributed port group).
                           type: string
                         startingAddress:
-                          description: Starting address of the management network
-                            range.
+                          description: |-
+                            Starting address of the management network range.
+                            Starting address of the management network range.
                           type: string
                         subnetMask:
-                          description: Subnet mask.
+                          description: |-
+                            Subnet mask.
+                            Subnet mask.
                           type: string
                       type: object
                     type: array
                   namespace:
-                    description: List of namespaces associated with the cluster.
+                    description: |-
+                      The list of namespaces to create in the Supervisor cluster
+                      List of namespaces associated with the cluster.
                     items:
                       properties:
                         contentLibraries:
-                          description: A list of content libraries.
+                          description: |-
+                            The list of content libraries to associate with the namespace
+                            A list of content libraries.
                           items:
                             type: string
                           type: array
                         name:
-                          description: The name of the namespace.
+                          description: |-
+                            The name of the namespace
+                            The name of the namespace.
                           type: string
                         vmClasses:
-                          description: A list of virtual machine classes.
+                          description: |-
+                            The list of virtual machine classes to add to the namespace
+                            A list of virtual machine classes.
                           items:
                             type: string
                           type: array
                       type: object
                     type: array
                   podCidr:
-                    description: CIDR blocks from which Kubernetes allocates pod IP
-                      addresses. Minimum subnet size is 23.
+                    description: |-
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
+                      CIDR blocks from which Kubernetes allocates pod IP addresses. Minimum subnet size is 23.
                     items:
                       properties:
                         address:
@@ -567,13 +826,16 @@ spec:
                       type: object
                     type: array
                   searchDomains:
-                    description: List of DNS search domains.
+                    description: |-
+                      List of DNS search domains.
+                      List of DNS search domains.
                     items:
                       type: string
                     type: array
                   serviceCidr:
-                    description: CIDR block from which Kubernetes allocates service
-                      cluster IP addresses.
+                    description: |-
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
+                      CIDR block from which Kubernetes allocates service cluster IP addresses.
                     items:
                       properties:
                         address:
@@ -585,19 +847,26 @@ spec:
                       type: object
                     type: array
                   sizingHint:
-                    description: Size of the Kubernetes API server.
+                    description: |-
+                      The size of the Kubernetes API server.
+                      Size of the Kubernetes API server.
                     type: string
                   storagePolicy:
-                    description: The name of a storage policy associated with the
-                      datastore where the container images will be stored.
+                    description: |-
+                      The name of the storage policy.
+                      The name of a storage policy associated with the datastore where the container images will be stored.
                     type: string
                   workerDns:
-                    description: List of DNS servers to use on the worker nodes.
+                    description: |-
+                      The list of addresses of the DNS servers to use for the worker nodes.
+                      List of DNS servers to use on the worker nodes.
                     items:
                       type: string
                     type: array
                   workerNtp:
-                    description: List of NTP servers to use on the worker nodes.
+                    description: |-
+                      The list of addresses of the NTP servers to use for the worker nodes.
+                      List of NTP servers to use on the worker nodes.
                     items:
                       type: string
                     type: array
@@ -608,14 +877,23 @@ spec:
                   description: A Condition that may apply to a resource.
                   properties:
                     lastTransitionTime:
-                      description: LastTransitionTime is the last time this condition
-                        transitioned from one status to another.
+                      description: |-
+                        LastTransitionTime is the last time this condition transitioned from one
+                        status to another.
                       format: date-time
                       type: string
                     message:
-                      description: A Message containing details about this condition's
-                        last transition from one status to another, if any.
+                      description: |-
+                        A Message containing details about this condition's last transition from
+                        one status to another, if any.
                       type: string
+                    observedGeneration:
+                      description: |-
+                        ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      type: integer
                     reason:
                       description: A Reason for this condition's last transition from
                         one status to another.
@@ -625,8 +903,9 @@ spec:
                         False, or Unknown?
                       type: string
                     type:
-                      description: Type of this condition. At most one of each condition
-                        type may apply to a resource at any point in time.
+                      description: |-
+                        Type of this condition. At most one of each condition type may apply to
+                        a resource at any point in time.
                       type: string
                   required:
                   - lastTransitionTime
@@ -635,6 +914,16 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the latest metadata.generation
+                  which resulted in either a ready state, or stalled due to error
+                  it can not recover from without human intervention.
+                format: int64
+                type: integer
             type: object
         required:
         - spec

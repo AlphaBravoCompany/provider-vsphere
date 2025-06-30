@@ -1,0 +1,19 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereHost
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherehost
+  labels:
+    testing.upbound.io/example-name: esx-01
+  name: esx-01
+spec:
+  forProvider:
+    datacenter: ${data.vsphere_datacenter.datacenter.id}
+    hostname: esxi-01.example.com
+    license: 00000-00000-00000-00000-00000
+    passwordSecretRef:
+      key: example-key
+      name: example-secret
+      namespace: upbound-system
+    thumbprint: ${data.vsphere_host_thumbprint.thumbprint.id}
+    username: root

@@ -1,0 +1,12 @@
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVappContainer
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherevappcontainer
+  labels:
+    testing.upbound.io/example-name: vapp_container
+  name: vapp-container
+spec:
+  forProvider:
+    name: vapp-01
+    parentResourcePoolId: ${data.vsphere_compute_cluster.compute_cluster.resource_pool_id}

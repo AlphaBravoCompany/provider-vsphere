@@ -1,0 +1,14 @@
+apiVersion: administration.crossplane.io/v1alpha1
+kind: VSphereLicense
+metadata:
+  annotations:
+    meta.upbound.io/example-id: administration/v1alpha1/vspherelicense
+  labels:
+    testing.upbound.io/example-name: licenseKey
+  name: licensekey
+spec:
+  forProvider:
+    labels:
+    - VpxClientLicenseLabel: Hello World
+      Workflow: Hello World
+    licenseKey: 00000-00000-00000-00000-00000

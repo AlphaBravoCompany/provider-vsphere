@@ -1,0 +1,34 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterHostGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclusterhostgroup
+  labels:
+    testing.upbound.io/example-name: cluster_host_group
+  name: cluster-host-group
+spec:
+  forProvider:
+    computeClusterId: ${vsphere_compute_cluster.compute_cluster.id}
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-test-cluster-host-group
+
+---
+
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeCluster
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclusterhostgroup
+  labels:
+    testing.upbound.io/example-name: compute_cluster
+  name: compute-cluster
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    drsAutomationLevel: fullyAutomated
+    drsEnabled: true
+    haEnabled: true
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-compute-cluster-test

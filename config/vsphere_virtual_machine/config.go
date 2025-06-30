@@ -1,6 +1,6 @@
 package vspherevirtualmachine
 
-import "github.com/upbound/upjet/pkg/config"
+import "github.com/crossplane/upjet/pkg/config"
 
 // Configure configures individual resources by adding custom ResourceConfigurators.
 func Configure(p *config.Provider) {
@@ -10,11 +10,11 @@ func Configure(p *config.Provider) {
 		r.Version = "v1alpha1"
 		r.References["resource_pool_id"] = config.Reference{
 			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/hostandclustermanagement/v1alpha1.VSphereComputeCluster",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
+			Extractor: `github.com/crossplane/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
 		r.References["datastore_id"] = config.Reference{
 			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("ID", true)`,
+			Extractor: `github.com/crossplane/upjet/pkg/resource.ExtractParamPath("ID", true)`,
 		}
 	})
 

@@ -1,0 +1,41 @@
+apiVersion: storage.crossplane.io/v1alpha1
+kind: VSphereStorageDrsVmOverride
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/vspherestoragedrsvmoverride
+  labels:
+    testing.upbound.io/example-name: drs_vm_override
+  name: drs-vm-override
+spec:
+  forProvider:
+    datastoreClusterId: ${data.vsphere_datastore_cluster.datastore_cluster.id}
+    sdrsEnabled: false
+    virtualMachineId: ${vsphere_virtual_machine.vm.id}
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/vspherestoragedrsvmoverride
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 1024
+    name: terraform-test
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_resource_pool

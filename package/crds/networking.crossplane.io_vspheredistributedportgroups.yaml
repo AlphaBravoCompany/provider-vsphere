@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vspheredistributedportgroups.networking.crossplane.io
 spec:
   group: networking.crossplane.io
@@ -20,11 +19,11 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.conditions[?(@.type=='Ready')].status
-      name: READY
-      type: string
     - jsonPath: .status.conditions[?(@.type=='Synced')].status
       name: SYNCED
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
       type: string
     - jsonPath: .metadata.annotations.crossplane\.io/external-name
       name: EXTERNAL-NAME
@@ -36,17 +35,23 @@ spec:
     schema:
       openAPIV3Schema:
         description: VSphereDistributedPortGroup is the Schema for the VSphereDistributedPortGroups
-          API. <no value>
+          API. Provides a vSphere distributed port group resource. This can be used
+          to create and manage port groups on a vSphere Distributed Switch.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -56,13 +61,14 @@ spec:
             properties:
               deletionPolicy:
                 default: Delete
-                description: 'DeletionPolicy specifies what will happen to the underlying
-                  external when this managed resource is deleted - either "Delete"
-                  or "Orphan" the external resource. This field is planned to be deprecated
-                  in favor of the ManagementPolicy field in a future release. Currently,
-                  both could be set independently and non-default values would be
-                  honored if the feature flag is enabled. See the design doc for more
-                  information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223'
+                description: |-
+                  DeletionPolicy specifies what will happen to the underlying external
+                  when this managed resource is deleted - either "Delete" or "Orphan" the
+                  external resource.
+                  This field is planned to be deprecated in favor of the ManagementPolicies
+                  field in a future release. Currently, both could be set independently and
+                  non-default values would be honored if the feature flag is enabled.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
                 enum:
                 - Orphan
                 - Delete
@@ -89,15 +95,19 @@ spec:
                       indicates whether or not all traffic is seen on a given port.
                     type: boolean
                   autoExpand:
-                    description: Auto-expands the port group beyond the port count
-                      configured in number_of_ports when necessary.
+                    description: |-
+                      Allows the port group to create additional ports
+                      past the limit specified in number_of_ports if necessary. Default: true.
+                      Auto-expands the port group beyond the port count configured in number_of_ports when necessary.
                     type: boolean
                   blockAllPorts:
                     description: Indicates whether to block all ports by default.
                     type: boolean
                   blockOverrideAllowed:
-                    description: Allow the blocked setting of an individual port to
-                      override the setting in the portgroup.
+                    description: |-
+                      Allow the port shutdown
+                      policy to be overridden on an individual port.
+                      Allow the blocked setting of an individual port to override the setting in the portgroup.
                     type: boolean
                   checkBeacon:
                     description: Enable beacon probing on the ports this policy applies
@@ -106,17 +116,27 @@ spec:
                   customAttributes:
                     additionalProperties:
                       type: string
-                    description: A list of custom attributes to set on this resource.
+                    description: |-
+                      Map of custom attribute ids to attribute
+                      value string to set for port group. See here
+                      for a reference on how to set values for custom attributes.
+                      A list of custom attributes to set on this resource.
                     type: object
+                    x-kubernetes-map-type: granular
                   description:
-                    description: The description of the portgroup.
+                    description: |-
+                      An optional description for the port group.
+                      The description of the portgroup.
                     type: string
                   directpathGen2Allowed:
                     description: Allow VMDirectPath Gen2 on the ports this policy
                       applies to.
                     type: boolean
                   distributedVirtualSwitchUuid:
-                    description: The UUID of the DVS to attach this port group to.
+                    description: |-
+                      The ID of the VDS to add the
+                      port group to. Forces a new resource if changed.
+                      The UUID of the DVS to attach this port group to.
                     type: string
                   egressShapingAverageBandwidth:
                     description: The average egress bandwidth in bits per second if
@@ -162,52 +182,81 @@ spec:
                       or passive.
                     type: string
                   livePortMovingAllowed:
-                    description: Allow a live port to be moved in and out of the portgroup.
+                    description: |-
+                      Allow a port in this port group to be
+                      moved to another port group while it is connected.
+                      Allow a live port to be moved in and out of the portgroup.
                     type: boolean
                   name:
-                    description: The name of the portgroup.
+                    description: |-
+                      The name of the port group.
+                      The name of the portgroup.
                     type: string
                   netflowEnabled:
                     description: Indicates whether to enable netflow on all ports.
                     type: boolean
                   netflowOverrideAllowed:
-                    description: Allow the enabling or disabling of Netflow on a port,
-                      contrary to the policy in the portgroup.
+                    description: |-
+                      Allow the
+                      Netflow policy on this port group to be overridden on an
+                      individual port.
+                      Allow the enabling or disabling of Netflow on a port, contrary to the policy in the portgroup.
                     type: boolean
                   networkResourcePoolKey:
-                    description: The key of a network resource pool to associate with
-                      this portgroup.
+                    description: |-
+                      The key of a network resource pool
+                      to associate with this port group. The default is -1, which implies no
+                      association.
+                      The key of a network resource pool to associate with this portgroup.
                     type: string
                   networkResourcePoolOverrideAllowed:
-                    description: Allow the network resource pool of an individual
-                      port to override the setting in the portgroup.
+                    description: |-
+                      Allow the network
+                      resource pool set on this port group to be overridden on an individual port.
+                      Allow the network resource pool of an individual port to override the setting in the portgroup.
                     type: boolean
                   notifySwitches:
                     description: If true, the teaming policy will notify the broadcast
                       network of a NIC failover, triggering cache updates.
                     type: boolean
                   numberOfPorts:
-                    description: The number of ports in this portgroup. The DVS will
-                      expand and shrink by modifying this setting.
+                    description: |-
+                      The number of ports available on this port
+                      group. Cannot be decreased below the amount of used ports on the port group.
+                      The number of ports in this portgroup. The DVS will expand and shrink by modifying this setting.
                     type: number
                   portConfigResetAtDisconnect:
-                    description: Reset the setting of any ports in this portgroup
-                      back to the default setting when the port disconnects.
+                    description: |-
+                      Reset a port's settings to the
+                      settings defined on this port group policy when the port disconnects.
+                      Reset the setting of any ports in this portgroup back to the default setting when the port disconnects.
                     type: boolean
                   portNameFormat:
-                    description: A template string to use when creating ports in the
-                      portgroup.
+                    description: |-
+                      An optional formatting policy for naming of
+                      the ports in this port group. See the portNameFormat attribute listed
+                      here for details on the format syntax.
+                      A template string to use when creating ports in the portgroup.
                     type: string
                   portPrivateSecondaryVlanId:
-                    description: The secondary VLAN ID for this port.
+                    description: |-
+                      Used to define a secondary VLAN
+                      ID when using private VLANs.
+                      The secondary VLAN ID for this port.
                     type: number
                   securityPolicyOverrideAllowed:
-                    description: Allow security policy settings on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      security policy settings defined in this port group
+                      policy to be overridden on an individual port.
+                      Allow security policy settings on a port to override those on the portgroup.
                     type: boolean
                   shapingOverrideAllowed:
-                    description: Allow the traffic shaping policies of an individual
-                      port to override the settings in the portgroup.
+                    description: |-
+                      Allow the
+                      traffic shaping options on this port group policy
+                      to be overridden on an individual port.
+                      Allow the traffic shaping policies of an individual port to override the settings in the portgroup.
                     type: boolean
                   standbyUplinks:
                     description: List of standby uplinks used for load balancing,
@@ -220,14 +269,17 @@ spec:
                     items:
                       type: string
                     type: array
+                    x-kubernetes-list-type: set
                   teamingPolicy:
                     description: The network adapter teaming policy. Can be one of
                       loadbalance_ip, loadbalance_srcmac, loadbalance_srcid, failover_explicit,
                       or loadbalance_loadbased.
                     type: string
                   trafficFilterOverrideAllowed:
-                    description: Allow any filter policies set on the individual port
-                      to override those in the portgroup.
+                    description: |-
+                      Allow any traffic filters on
+                      this port group to be overridden on an individual port.
+                      Allow any filter policies set on the individual port to override those in the portgroup.
                     type: boolean
                   txUplink:
                     description: If true, a copy of packets sent to the switch will
@@ -235,22 +287,38 @@ spec:
                       packet forwarded done by the switch.
                     type: boolean
                   type:
-                    description: The type of portgroup. Can be one of earlyBinding
-                      (static) or ephemeral.
+                    description: |-
+                      The port group type. Can be one of earlyBinding (static
+                      binding) or ephemeral. Default: earlyBinding.
+                      The type of portgroup. Can be one of earlyBinding (static) or ephemeral.
                     type: string
                   uplinkTeamingOverrideAllowed:
-                    description: Allow the uplink teaming policies on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      uplink teaming options on this port group to be
+                      overridden on an individual port.
+                      Allow the uplink teaming policies on a port to override those on the portgroup.
                     type: boolean
                   vlanId:
-                    description: The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    description: |-
+                      The member VLAN for the ports this policy applies to. A
+                      value of 0 means no VLAN.
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
                     type: number
                   vlanOverrideAllowed:
-                    description: Allow the VLAN configuration on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      VLAN settings on this port group to be overridden on an
+                      individual port.
+                      Allow the VLAN configuration on a port to override those on the portgroup.
                     type: boolean
                   vlanRange:
-                    description: The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    description: |-
+                      Used to denote VLAN trunking. Use the min_vlan
+                      and max_vlan sub-arguments to define the tagged VLAN range. Multiple
+                      vlan_range definitions are allowed, but they must not overlap. Example
+                      below:
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
                     items:
                       properties:
                         maxVlan:
@@ -259,33 +327,311 @@ spec:
                         minVlan:
                           description: The minimum VLAN to use in the range.
                           type: number
-                      required:
-                      - maxVlan
-                      - minVlan
                       type: object
                     type: array
                 type: object
-              managementPolicy:
-                default: FullControl
-                description: 'THIS IS AN ALPHA FIELD. Do not use it in production.
-                  It is not honored unless the relevant Crossplane feature flag is
-                  enabled, and may be changed or removed without notice. ManagementPolicy
-                  specifies the level of control Crossplane has over the managed external
-                  resource. This field is planned to replace the DeletionPolicy field
-                  in a future release. Currently, both could be set independently
-                  and non-default values would be honored if the feature flag is enabled.
-                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223'
-                enum:
-                - FullControl
-                - ObserveOnly
-                - OrphanOnDelete
-                type: string
+              initProvider:
+                description: |-
+                  THIS IS A BETA FIELD. It will be honored
+                  unless the Management Policies feature flag is disabled.
+                  InitProvider holds the same fields as ForProvider, with the exception
+                  of Identifier and other resource reference fields. The fields that are
+                  in InitProvider are merged into ForProvider when the resource is created.
+                  The same fields are also added to the terraform ignore_changes hook, to
+                  avoid updating them after creation. This is useful for fields that are
+                  required on creation, but we do not desire to update them after creation,
+                  for example because of an external controller is managing them, like an
+                  autoscaler.
+                properties:
+                  activeUplinks:
+                    description: List of active uplinks used for load balancing, matching
+                      the names of the uplinks assigned in the DVS.
+                    items:
+                      type: string
+                    type: array
+                  allowForgedTransmits:
+                    description: Controls whether or not the virtual network adapter
+                      is allowed to send network traffic with a different MAC address
+                      than that of its own.
+                    type: boolean
+                  allowMacChanges:
+                    description: Controls whether or not the Media Access Control
+                      (MAC) address can be changed.
+                    type: boolean
+                  allowPromiscuous:
+                    description: Enable promiscuous mode on the network. This flag
+                      indicates whether or not all traffic is seen on a given port.
+                    type: boolean
+                  autoExpand:
+                    description: |-
+                      Allows the port group to create additional ports
+                      past the limit specified in number_of_ports if necessary. Default: true.
+                      Auto-expands the port group beyond the port count configured in number_of_ports when necessary.
+                    type: boolean
+                  blockAllPorts:
+                    description: Indicates whether to block all ports by default.
+                    type: boolean
+                  blockOverrideAllowed:
+                    description: |-
+                      Allow the port shutdown
+                      policy to be overridden on an individual port.
+                      Allow the blocked setting of an individual port to override the setting in the portgroup.
+                    type: boolean
+                  checkBeacon:
+                    description: Enable beacon probing on the ports this policy applies
+                      to.
+                    type: boolean
+                  customAttributes:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Map of custom attribute ids to attribute
+                      value string to set for port group. See here
+                      for a reference on how to set values for custom attributes.
+                      A list of custom attributes to set on this resource.
+                    type: object
+                    x-kubernetes-map-type: granular
+                  description:
+                    description: |-
+                      An optional description for the port group.
+                      The description of the portgroup.
+                    type: string
+                  directpathGen2Allowed:
+                    description: Allow VMDirectPath Gen2 on the ports this policy
+                      applies to.
+                    type: boolean
+                  distributedVirtualSwitchUuid:
+                    description: |-
+                      The ID of the VDS to add the
+                      port group to. Forces a new resource if changed.
+                      The UUID of the DVS to attach this port group to.
+                    type: string
+                  egressShapingAverageBandwidth:
+                    description: The average egress bandwidth in bits per second if
+                      egress shaping is enabled on the port.
+                    type: number
+                  egressShapingBurstSize:
+                    description: The maximum egress burst size allowed in bytes if
+                      egress shaping is enabled on the port.
+                    type: number
+                  egressShapingEnabled:
+                    description: True if the traffic shaper is enabled for egress
+                      traffic on the port.
+                    type: boolean
+                  egressShapingPeakBandwidth:
+                    description: The peak egress bandwidth during bursts in bits per
+                      second if egress traffic shaping is enabled on the port.
+                    type: number
+                  failback:
+                    description: If true, the teaming policy will re-activate failed
+                      interfaces higher in precedence when they come back up.
+                    type: boolean
+                  ingressShapingAverageBandwidth:
+                    description: The average ingress bandwidth in bits per second
+                      if ingress shaping is enabled on the port.
+                    type: number
+                  ingressShapingBurstSize:
+                    description: The maximum ingress burst size allowed in bytes if
+                      ingress shaping is enabled on the port.
+                    type: number
+                  ingressShapingEnabled:
+                    description: True if the traffic shaper is enabled for ingress
+                      traffic on the port.
+                    type: boolean
+                  ingressShapingPeakBandwidth:
+                    description: The peak ingress bandwidth during bursts in bits
+                      per second if ingress traffic shaping is enabled on the port.
+                    type: number
+                  lacpEnabled:
+                    description: Whether or not to enable LACP on all uplink ports.
+                    type: boolean
+                  lacpMode:
+                    description: The uplink LACP mode to use. Can be one of active
+                      or passive.
+                    type: string
+                  livePortMovingAllowed:
+                    description: |-
+                      Allow a port in this port group to be
+                      moved to another port group while it is connected.
+                      Allow a live port to be moved in and out of the portgroup.
+                    type: boolean
+                  name:
+                    description: |-
+                      The name of the port group.
+                      The name of the portgroup.
+                    type: string
+                  netflowEnabled:
+                    description: Indicates whether to enable netflow on all ports.
+                    type: boolean
+                  netflowOverrideAllowed:
+                    description: |-
+                      Allow the
+                      Netflow policy on this port group to be overridden on an
+                      individual port.
+                      Allow the enabling or disabling of Netflow on a port, contrary to the policy in the portgroup.
+                    type: boolean
+                  networkResourcePoolKey:
+                    description: |-
+                      The key of a network resource pool
+                      to associate with this port group. The default is -1, which implies no
+                      association.
+                      The key of a network resource pool to associate with this portgroup.
+                    type: string
+                  networkResourcePoolOverrideAllowed:
+                    description: |-
+                      Allow the network
+                      resource pool set on this port group to be overridden on an individual port.
+                      Allow the network resource pool of an individual port to override the setting in the portgroup.
+                    type: boolean
+                  notifySwitches:
+                    description: If true, the teaming policy will notify the broadcast
+                      network of a NIC failover, triggering cache updates.
+                    type: boolean
+                  numberOfPorts:
+                    description: |-
+                      The number of ports available on this port
+                      group. Cannot be decreased below the amount of used ports on the port group.
+                      The number of ports in this portgroup. The DVS will expand and shrink by modifying this setting.
+                    type: number
+                  portConfigResetAtDisconnect:
+                    description: |-
+                      Reset a port's settings to the
+                      settings defined on this port group policy when the port disconnects.
+                      Reset the setting of any ports in this portgroup back to the default setting when the port disconnects.
+                    type: boolean
+                  portNameFormat:
+                    description: |-
+                      An optional formatting policy for naming of
+                      the ports in this port group. See the portNameFormat attribute listed
+                      here for details on the format syntax.
+                      A template string to use when creating ports in the portgroup.
+                    type: string
+                  portPrivateSecondaryVlanId:
+                    description: |-
+                      Used to define a secondary VLAN
+                      ID when using private VLANs.
+                      The secondary VLAN ID for this port.
+                    type: number
+                  securityPolicyOverrideAllowed:
+                    description: |-
+                      Allow the
+                      security policy settings defined in this port group
+                      policy to be overridden on an individual port.
+                      Allow security policy settings on a port to override those on the portgroup.
+                    type: boolean
+                  shapingOverrideAllowed:
+                    description: |-
+                      Allow the
+                      traffic shaping options on this port group policy
+                      to be overridden on an individual port.
+                      Allow the traffic shaping policies of an individual port to override the settings in the portgroup.
+                    type: boolean
+                  standbyUplinks:
+                    description: List of standby uplinks used for load balancing,
+                      matching the names of the uplinks assigned in the DVS.
+                    items:
+                      type: string
+                    type: array
+                  tags:
+                    description: A list of tag IDs to apply to this object.
+                    items:
+                      type: string
+                    type: array
+                    x-kubernetes-list-type: set
+                  teamingPolicy:
+                    description: The network adapter teaming policy. Can be one of
+                      loadbalance_ip, loadbalance_srcmac, loadbalance_srcid, failover_explicit,
+                      or loadbalance_loadbased.
+                    type: string
+                  trafficFilterOverrideAllowed:
+                    description: |-
+                      Allow any traffic filters on
+                      this port group to be overridden on an individual port.
+                      Allow any filter policies set on the individual port to override those in the portgroup.
+                    type: boolean
+                  txUplink:
+                    description: If true, a copy of packets sent to the switch will
+                      always be forwarded to an uplink in addition to the regular
+                      packet forwarded done by the switch.
+                    type: boolean
+                  type:
+                    description: |-
+                      The port group type. Can be one of earlyBinding (static
+                      binding) or ephemeral. Default: earlyBinding.
+                      The type of portgroup. Can be one of earlyBinding (static) or ephemeral.
+                    type: string
+                  uplinkTeamingOverrideAllowed:
+                    description: |-
+                      Allow the
+                      uplink teaming options on this port group to be
+                      overridden on an individual port.
+                      Allow the uplink teaming policies on a port to override those on the portgroup.
+                    type: boolean
+                  vlanId:
+                    description: |-
+                      The member VLAN for the ports this policy applies to. A
+                      value of 0 means no VLAN.
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    type: number
+                  vlanOverrideAllowed:
+                    description: |-
+                      Allow the
+                      VLAN settings on this port group to be overridden on an
+                      individual port.
+                      Allow the VLAN configuration on a port to override those on the portgroup.
+                    type: boolean
+                  vlanRange:
+                    description: |-
+                      Used to denote VLAN trunking. Use the min_vlan
+                      and max_vlan sub-arguments to define the tagged VLAN range. Multiple
+                      vlan_range definitions are allowed, but they must not overlap. Example
+                      below:
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    items:
+                      properties:
+                        maxVlan:
+                          description: The minimum VLAN to use in the range.
+                          type: number
+                        minVlan:
+                          description: The minimum VLAN to use in the range.
+                          type: number
+                      type: object
+                    type: array
+                type: object
+              managementPolicies:
+                default:
+                - '*'
+                description: |-
+                  THIS IS A BETA FIELD. It is on by default but can be opted out
+                  through a Crossplane feature flag.
+                  ManagementPolicies specify the array of actions Crossplane is allowed to
+                  take on the managed and external resources.
+                  This field is planned to replace the DeletionPolicy field in a future
+                  release. Currently, both could be set independently and non-default
+                  values would be honored if the feature flag is enabled. If both are
+                  custom, the DeletionPolicy field will be ignored.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                  and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                items:
+                  description: |-
+                    A ManagementAction represents an action that the Crossplane controllers
+                    can take on an external resource.
+                  enum:
+                  - Observe
+                  - Create
+                  - Update
+                  - Delete
+                  - LateInitialize
+                  - '*'
+                  type: string
+                type: array
               providerConfigRef:
                 default:
                   name: default
-                description: ProviderConfigReference specifies how the provider that
-                  will be used to create, observe, update, and delete this managed
-                  resource should be configured.
+                description: |-
+                  ProviderConfigReference specifies how the provider that will be used to
+                  create, observe, update, and delete this managed resource should be
+                  configured.
                 properties:
                   name:
                     description: Name of the referenced object.
@@ -295,57 +641,21 @@ spec:
                     properties:
                       resolution:
                         default: Required
-                        description: Resolution specifies whether resolution of this
-                          reference is required. The default is 'Required', which
-                          means the reconcile will fail if the reference cannot be
-                          resolved. 'Optional' means this reference will be a no-op
-                          if it cannot be resolved.
+                        description: |-
+                          Resolution specifies whether resolution of this reference is required.
+                          The default is 'Required', which means the reconcile will fail if the
+                          reference cannot be resolved. 'Optional' means this reference will be
+                          a no-op if it cannot be resolved.
                         enum:
                         - Required
                         - Optional
                         type: string
                       resolve:
-                        description: Resolve specifies when this reference should
-                          be resolved. The default is 'IfNotPresent', which will attempt
-                          to resolve the reference only when the corresponding field
-                          is not present. Use 'Always' to resolve the reference on
-                          every reconcile.
-                        enum:
-                        - Always
-                        - IfNotPresent
-                        type: string
-                    type: object
-                required:
-                - name
-                type: object
-              providerRef:
-                description: 'ProviderReference specifies the provider that will be
-                  used to create, observe, update, and delete this managed resource.
-                  Deprecated: Please use ProviderConfigReference, i.e. `providerConfigRef`'
-                properties:
-                  name:
-                    description: Name of the referenced object.
-                    type: string
-                  policy:
-                    description: Policies for referencing.
-                    properties:
-                      resolution:
-                        default: Required
-                        description: Resolution specifies whether resolution of this
-                          reference is required. The default is 'Required', which
-                          means the reconcile will fail if the reference cannot be
-                          resolved. 'Optional' means this reference will be a no-op
-                          if it cannot be resolved.
-                        enum:
-                        - Required
-                        - Optional
-                        type: string
-                      resolve:
-                        description: Resolve specifies when this reference should
-                          be resolved. The default is 'IfNotPresent', which will attempt
-                          to resolve the reference only when the corresponding field
-                          is not present. Use 'Always' to resolve the reference on
-                          every reconcile.
+                        description: |-
+                          Resolve specifies when this reference should be resolved. The default
+                          is 'IfNotPresent', which will attempt to resolve the reference only when
+                          the corresponding field is not present. Use 'Always' to resolve the
+                          reference on every reconcile.
                         enum:
                         - Always
                         - IfNotPresent
@@ -355,17 +665,19 @@ spec:
                 - name
                 type: object
               publishConnectionDetailsTo:
-                description: PublishConnectionDetailsTo specifies the connection secret
-                  config which contains a name, metadata and a reference to secret
-                  store config to which any connection details for this managed resource
-                  should be written. Connection details frequently include the endpoint,
-                  username, and password required to connect to the managed resource.
+                description: |-
+                  PublishConnectionDetailsTo specifies the connection secret config which
+                  contains a name, metadata and a reference to secret store config to
+                  which any connection details for this managed resource should be written.
+                  Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
                 properties:
                   configRef:
                     default:
                       name: default
-                    description: SecretStoreConfigRef specifies which secret store
-                      config should be used for this ConnectionSecret.
+                    description: |-
+                      SecretStoreConfigRef specifies which secret store config should be used
+                      for this ConnectionSecret.
                     properties:
                       name:
                         description: Name of the referenced object.
@@ -375,21 +687,21 @@ spec:
                         properties:
                           resolution:
                             default: Required
-                            description: Resolution specifies whether resolution of
-                              this reference is required. The default is 'Required',
-                              which means the reconcile will fail if the reference
-                              cannot be resolved. 'Optional' means this reference
-                              will be a no-op if it cannot be resolved.
+                            description: |-
+                              Resolution specifies whether resolution of this reference is required.
+                              The default is 'Required', which means the reconcile will fail if the
+                              reference cannot be resolved. 'Optional' means this reference will be
+                              a no-op if it cannot be resolved.
                             enum:
                             - Required
                             - Optional
                             type: string
                           resolve:
-                            description: Resolve specifies when this reference should
-                              be resolved. The default is 'IfNotPresent', which will
-                              attempt to resolve the reference only when the corresponding
-                              field is not present. Use 'Always' to resolve the reference
-                              on every reconcile.
+                            description: |-
+                              Resolve specifies when this reference should be resolved. The default
+                              is 'IfNotPresent', which will attempt to resolve the reference only when
+                              the corresponding field is not present. Use 'Always' to resolve the
+                              reference on every reconcile.
                             enum:
                             - Always
                             - IfNotPresent
@@ -404,21 +716,22 @@ spec:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: Annotations are the annotations to be added to
-                          connection secret. - For Kubernetes secrets, this will be
-                          used as "metadata.annotations". - It is up to Secret Store
-                          implementation for others store types.
+                        description: |-
+                          Annotations are the annotations to be added to connection secret.
+                          - For Kubernetes secrets, this will be used as "metadata.annotations".
+                          - It is up to Secret Store implementation for others store types.
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: Labels are the labels/tags to be added to connection
-                          secret. - For Kubernetes secrets, this will be used as "metadata.labels".
-                          - It is up to Secret Store implementation for others store
-                          types.
+                        description: |-
+                          Labels are the labels/tags to be added to connection secret.
+                          - For Kubernetes secrets, this will be used as "metadata.labels".
+                          - It is up to Secret Store implementation for others store types.
                         type: object
                       type:
-                        description: Type is the SecretType for the connection secret.
+                        description: |-
+                          Type is the SecretType for the connection secret.
                           - Only valid for Kubernetes Secret Stores.
                         type: string
                     type: object
@@ -429,14 +742,15 @@ spec:
                 - name
                 type: object
               writeConnectionSecretToRef:
-                description: WriteConnectionSecretToReference specifies the namespace
-                  and name of a Secret to which any connection details for this managed
-                  resource should be written. Connection details frequently include
-                  the endpoint, username, and password required to connect to the
-                  managed resource. This field is planned to be replaced in a future
-                  release in favor of PublishConnectionDetailsTo. Currently, both
-                  could be set independently and connection details would be published
-                  to both without affecting each other.
+                description: |-
+                  WriteConnectionSecretToReference specifies the namespace and name of a
+                  Secret to which any connection details for this managed resource should
+                  be written. Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
+                  This field is planned to be replaced in a future release in favor of
+                  PublishConnectionDetailsTo. Currently, both could be set independently
+                  and connection details would be published to both without affecting
+                  each other.
                 properties:
                   name:
                     description: Name of the secret.
@@ -452,10 +766,15 @@ spec:
             - forProvider
             type: object
             x-kubernetes-validations:
-            - message: distributedVirtualSwitchUuid is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.distributedVirtualSwitchUuid)
-            - message: name is a required parameter
-              rule: self.managementPolicy == 'ObserveOnly' || has(self.forProvider.name)
+            - message: spec.forProvider.distributedVirtualSwitchUuid is a required
+                parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.distributedVirtualSwitchUuid)
+                || (has(self.initProvider) && has(self.initProvider.distributedVirtualSwitchUuid))'
+            - message: spec.forProvider.name is a required parameter
+              rule: '!(''*'' in self.managementPolicies || ''Create'' in self.managementPolicies
+                || ''Update'' in self.managementPolicies) || has(self.forProvider.name)
+                || (has(self.initProvider) && has(self.initProvider.name))'
           status:
             description: VSphereDistributedPortGroupStatus defines the observed state
               of VSphereDistributedPortGroup.
@@ -482,38 +801,54 @@ spec:
                       indicates whether or not all traffic is seen on a given port.
                     type: boolean
                   autoExpand:
-                    description: Auto-expands the port group beyond the port count
-                      configured in number_of_ports when necessary.
+                    description: |-
+                      Allows the port group to create additional ports
+                      past the limit specified in number_of_ports if necessary. Default: true.
+                      Auto-expands the port group beyond the port count configured in number_of_ports when necessary.
                     type: boolean
                   blockAllPorts:
                     description: Indicates whether to block all ports by default.
                     type: boolean
                   blockOverrideAllowed:
-                    description: Allow the blocked setting of an individual port to
-                      override the setting in the portgroup.
+                    description: |-
+                      Allow the port shutdown
+                      policy to be overridden on an individual port.
+                      Allow the blocked setting of an individual port to override the setting in the portgroup.
                     type: boolean
                   checkBeacon:
                     description: Enable beacon probing on the ports this policy applies
                       to.
                     type: boolean
                   configVersion:
-                    description: Version string of the configuration that this spec
-                      is trying to change.
+                    description: |-
+                      : The current version of the port group configuration,
+                      incremented by subsequent updates to the port group.
+                      Version string of the configuration that this spec is trying to change.
                     type: string
                   customAttributes:
                     additionalProperties:
                       type: string
-                    description: A list of custom attributes to set on this resource.
+                    description: |-
+                      Map of custom attribute ids to attribute
+                      value string to set for port group. See here
+                      for a reference on how to set values for custom attributes.
+                      A list of custom attributes to set on this resource.
                     type: object
+                    x-kubernetes-map-type: granular
                   description:
-                    description: The description of the portgroup.
+                    description: |-
+                      An optional description for the port group.
+                      The description of the portgroup.
                     type: string
                   directpathGen2Allowed:
                     description: Allow VMDirectPath Gen2 on the ports this policy
                       applies to.
                     type: boolean
                   distributedVirtualSwitchUuid:
-                    description: The UUID of the DVS to attach this port group to.
+                    description: |-
+                      The ID of the VDS to add the
+                      port group to. Forces a new resource if changed.
+                      The UUID of the DVS to attach this port group to.
                     type: string
                   egressShapingAverageBandwidth:
                     description: The average egress bandwidth in bits per second if
@@ -536,6 +871,9 @@ spec:
                       interfaces higher in precedence when they come back up.
                     type: boolean
                   id:
+                    description: |-
+                      : The managed object reference ID of the created
+                      port group.
                     type: string
                   ingressShapingAverageBandwidth:
                     description: The average ingress bandwidth in bits per second
@@ -554,7 +892,9 @@ spec:
                       per second if ingress traffic shaping is enabled on the port.
                     type: number
                   key:
-                    description: The generated UUID of the portgroup.
+                    description: |-
+                      : The generated UUID of the port group.
+                      The generated UUID of the portgroup.
                     type: string
                   lacpEnabled:
                     description: Whether or not to enable LACP on all uplink ports.
@@ -564,52 +904,81 @@ spec:
                       or passive.
                     type: string
                   livePortMovingAllowed:
-                    description: Allow a live port to be moved in and out of the portgroup.
+                    description: |-
+                      Allow a port in this port group to be
+                      moved to another port group while it is connected.
+                      Allow a live port to be moved in and out of the portgroup.
                     type: boolean
                   name:
-                    description: The name of the portgroup.
+                    description: |-
+                      The name of the port group.
+                      The name of the portgroup.
                     type: string
                   netflowEnabled:
                     description: Indicates whether to enable netflow on all ports.
                     type: boolean
                   netflowOverrideAllowed:
-                    description: Allow the enabling or disabling of Netflow on a port,
-                      contrary to the policy in the portgroup.
+                    description: |-
+                      Allow the
+                      Netflow policy on this port group to be overridden on an
+                      individual port.
+                      Allow the enabling or disabling of Netflow on a port, contrary to the policy in the portgroup.
                     type: boolean
                   networkResourcePoolKey:
-                    description: The key of a network resource pool to associate with
-                      this portgroup.
+                    description: |-
+                      The key of a network resource pool
+                      to associate with this port group. The default is -1, which implies no
+                      association.
+                      The key of a network resource pool to associate with this portgroup.
                     type: string
                   networkResourcePoolOverrideAllowed:
-                    description: Allow the network resource pool of an individual
-                      port to override the setting in the portgroup.
+                    description: |-
+                      Allow the network
+                      resource pool set on this port group to be overridden on an individual port.
+                      Allow the network resource pool of an individual port to override the setting in the portgroup.
                     type: boolean
                   notifySwitches:
                     description: If true, the teaming policy will notify the broadcast
                       network of a NIC failover, triggering cache updates.
                     type: boolean
                   numberOfPorts:
-                    description: The number of ports in this portgroup. The DVS will
-                      expand and shrink by modifying this setting.
+                    description: |-
+                      The number of ports available on this port
+                      group. Cannot be decreased below the amount of used ports on the port group.
+                      The number of ports in this portgroup. The DVS will expand and shrink by modifying this setting.
                     type: number
                   portConfigResetAtDisconnect:
-                    description: Reset the setting of any ports in this portgroup
-                      back to the default setting when the port disconnects.
+                    description: |-
+                      Reset a port's settings to the
+                      settings defined on this port group policy when the port disconnects.
+                      Reset the setting of any ports in this portgroup back to the default setting when the port disconnects.
                     type: boolean
                   portNameFormat:
-                    description: A template string to use when creating ports in the
-                      portgroup.
+                    description: |-
+                      An optional formatting policy for naming of
+                      the ports in this port group. See the portNameFormat attribute listed
+                      here for details on the format syntax.
+                      A template string to use when creating ports in the portgroup.
                     type: string
                   portPrivateSecondaryVlanId:
-                    description: The secondary VLAN ID for this port.
+                    description: |-
+                      Used to define a secondary VLAN
+                      ID when using private VLANs.
+                      The secondary VLAN ID for this port.
                     type: number
                   securityPolicyOverrideAllowed:
-                    description: Allow security policy settings on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      security policy settings defined in this port group
+                      policy to be overridden on an individual port.
+                      Allow security policy settings on a port to override those on the portgroup.
                     type: boolean
                   shapingOverrideAllowed:
-                    description: Allow the traffic shaping policies of an individual
-                      port to override the settings in the portgroup.
+                    description: |-
+                      Allow the
+                      traffic shaping options on this port group policy
+                      to be overridden on an individual port.
+                      Allow the traffic shaping policies of an individual port to override the settings in the portgroup.
                     type: boolean
                   standbyUplinks:
                     description: List of standby uplinks used for load balancing,
@@ -622,14 +991,17 @@ spec:
                     items:
                       type: string
                     type: array
+                    x-kubernetes-list-type: set
                   teamingPolicy:
                     description: The network adapter teaming policy. Can be one of
                       loadbalance_ip, loadbalance_srcmac, loadbalance_srcid, failover_explicit,
                       or loadbalance_loadbased.
                     type: string
                   trafficFilterOverrideAllowed:
-                    description: Allow any filter policies set on the individual port
-                      to override those in the portgroup.
+                    description: |-
+                      Allow any traffic filters on
+                      this port group to be overridden on an individual port.
+                      Allow any filter policies set on the individual port to override those in the portgroup.
                     type: boolean
                   txUplink:
                     description: If true, a copy of packets sent to the switch will
@@ -637,22 +1009,38 @@ spec:
                       packet forwarded done by the switch.
                     type: boolean
                   type:
-                    description: The type of portgroup. Can be one of earlyBinding
-                      (static) or ephemeral.
+                    description: |-
+                      The port group type. Can be one of earlyBinding (static
+                      binding) or ephemeral. Default: earlyBinding.
+                      The type of portgroup. Can be one of earlyBinding (static) or ephemeral.
                     type: string
                   uplinkTeamingOverrideAllowed:
-                    description: Allow the uplink teaming policies on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      uplink teaming options on this port group to be
+                      overridden on an individual port.
+                      Allow the uplink teaming policies on a port to override those on the portgroup.
                     type: boolean
                   vlanId:
-                    description: The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    description: |-
+                      The member VLAN for the ports this policy applies to. A
+                      value of 0 means no VLAN.
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
                     type: number
                   vlanOverrideAllowed:
-                    description: Allow the VLAN configuration on a port to override
-                      those on the portgroup.
+                    description: |-
+                      Allow the
+                      VLAN settings on this port group to be overridden on an
+                      individual port.
+                      Allow the VLAN configuration on a port to override those on the portgroup.
                     type: boolean
                   vlanRange:
-                    description: The VLAN ID for single VLAN mode. 0 denotes no VLAN.
+                    description: |-
+                      Used to denote VLAN trunking. Use the min_vlan
+                      and max_vlan sub-arguments to define the tagged VLAN range. Multiple
+                      vlan_range definitions are allowed, but they must not overlap. Example
+                      below:
+                      The VLAN ID for single VLAN mode. 0 denotes no VLAN.
                     items:
                       properties:
                         maxVlan:
@@ -670,14 +1058,23 @@ spec:
                   description: A Condition that may apply to a resource.
                   properties:
                     lastTransitionTime:
-                      description: LastTransitionTime is the last time this condition
-                        transitioned from one status to another.
+                      description: |-
+                        LastTransitionTime is the last time this condition transitioned from one
+                        status to another.
                       format: date-time
                       type: string
                     message:
-                      description: A Message containing details about this condition's
-                        last transition from one status to another, if any.
+                      description: |-
+                        A Message containing details about this condition's last transition from
+                        one status to another, if any.
                       type: string
+                    observedGeneration:
+                      description: |-
+                        ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      type: integer
                     reason:
                       description: A Reason for this condition's last transition from
                         one status to another.
@@ -687,8 +1084,9 @@ spec:
                         False, or Unknown?
                       type: string
                     type:
-                      description: Type of this condition. At most one of each condition
-                        type may apply to a resource at any point in time.
+                      description: |-
+                        Type of this condition. At most one of each condition type may apply to
+                        a resource at any point in time.
                       type: string
                   required:
                   - lastTransitionTime
@@ -697,6 +1095,16 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the latest metadata.generation
+                  which resulted in either a ready state, or stalled due to error
+                  it can not recover from without human intervention.
+                format: int64
+                type: integer
             type: object
         required:
         - spec

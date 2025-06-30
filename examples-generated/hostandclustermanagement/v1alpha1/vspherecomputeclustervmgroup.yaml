@@ -1,0 +1,43 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterVmGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmgroup
+  labels:
+    testing.upbound.io/example-name: cluster_vm_group
+  name: cluster-vm-group
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: terraform-test-cluster-vm-group
+    virtualMachineIds:
+    - ${vsphere_virtual_machine.vm.*.id}
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmgroup
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    count: 2
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 2048
+    name: terraform-test-${count.index}
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster

@@ -1,0 +1,26 @@
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereGuestOsCustomization
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vsphereguestoscustomization
+  labels:
+    testing.upbound.io/example-name: windows
+  name: windows
+spec:
+  forProvider:
+    name: windows
+    spec:
+    - windowsOptions:
+      - adminPasswordSecretRef:
+          key: example-key
+          name: example-secret
+          namespace: upbound-system
+        autoLogon: false
+        autoLogonCount: 0
+        computerName: windows
+        runOnceCommandList:
+        - command-1
+        - command-2
+        timeZone: 4
+        workgroup: workgroup
+    type: Windows

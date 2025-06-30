@@ -41,7 +41,7 @@ import (
 	vspherevmstoragepolicy "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vm_storage_policy"
 	vspherevmfsdatastore "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vmfs_datastore"
 	vspherevnic "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vnic"
-	ujconfig "github.com/upbound/upjet/pkg/config"
+	ujconfig "github.com/crossplane/upjet/pkg/config"
 )
 
 const (

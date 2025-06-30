@@ -4,7 +4,7 @@ Copyright 2022 Upbound Inc.
 
 package config
 
-import "github.com/upbound/upjet/pkg/config"
+import "github.com/crossplane/upjet/pkg/config"
 
 // ExternalNameConfigs contains all external name configurations for this
 // provider.
@@ -52,7 +52,7 @@ var ExternalNameConfigs = map[string]config.ExternalName{
 	"vsphere_offline_software_depot":                  config.IdentifierFromProvider,
 	"vsphere_guest_os_customization":                  config.IdentifierFromProvider,
 	"vsphere_supervisor":                              config.IdentifierFromProvider,
-	"vsphere_virtual_machine_class":                  config.IdentifierFromProvider,
+	"vsphere_virtual_machine_class":                   config.IdentifierFromProvider,
 }
 
 // ExternalNameConfigurations applies all external name configs listed in the

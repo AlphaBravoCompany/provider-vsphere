@@ -3,4 +3,4 @@ kind: Provider
 metadata:
   name: provider-vsphere
 spec:
-  package: docker.io/alphabravodevops/provider-vsphere-amd64:latest
+  package: docker.io/alphabravodevops/provider-vsphere:latest

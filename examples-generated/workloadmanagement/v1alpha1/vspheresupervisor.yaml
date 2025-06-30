@@ -1,0 +1,59 @@
+apiVersion: workloadmanagement.crossplane.io/v1alpha1
+kind: VSphereSupervisor
+metadata:
+  annotations:
+    meta.upbound.io/example-id: workloadmanagement/v1alpha1/vspheresupervisor
+  labels:
+    testing.upbound.io/example-name: supervisor
+  name: supervisor
+spec:
+  forProvider:
+    cluster: <compute_cluster_id>
+    contentLibrary: <content_library_id>
+    dvsUuid: <distributed_switch_uuid>
+    edgeCluster: <edge_cluster_id>
+    egressCidr:
+    - address: 10.10.11.0
+      prefix: 24
+    ingressCidr:
+    - address: 10.10.10.0
+      prefix: 24
+    mainDns: 10.0.0.250
+    managementNetwork:
+    - addressCount: 5
+      gateway: 10.0.0.250
+      network: <portgroup_id>
+      startingAddress: 10.0.0.150
+      subnetMask: 255.255.255.0
+    namespace:
+    - contentLibraries: []
+      name: custom-namespace
+      vmClasses:
+      - ${vsphere_virtual_machine_class.vm_class.id}
+    podCidr:
+    - address: 10.244.10.0
+      prefix: 23
+    searchDomains:
+    - vsphere.local
+    serviceCidr:
+    - address: 10.10.12.0
+      prefix: 24
+    sizingHint: MEDIUM
+    storagePolicy: <storage_policy_name>
+    workerDns: 10.0.0.250
+
+---
+
+apiVersion: workloadmanagement.crossplane.io/v1alpha1
+kind: VSphereVirtualMachineClass
+metadata:
+  annotations:
+    meta.upbound.io/example-id: workloadmanagement/v1alpha1/vspheresupervisor
+  labels:
+    testing.upbound.io/example-name: vm_class
+  name: vm-class
+spec:
+  forProvider:
+    cpus: 4
+    memory: 4096
+    name: custom-class

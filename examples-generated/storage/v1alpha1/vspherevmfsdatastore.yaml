@@ -1,0 +1,16 @@
+apiVersion: storage.crossplane.io/v1alpha1
+kind: VSphereVmfsDatastore
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/vspherevmfsdatastore
+  labels:
+    testing.upbound.io/example-name: datastore
+  name: datastore
+spec:
+  forProvider:
+    disks:
+    - mpx.vmhba1:C0:T1:L0
+    - mpx.vmhba1:C0:T2:L0
+    - mpx.vmhba1:C0:T2:L0
+    hostSystemId: ${data.vsphere_host.host.id}
+    name: terraform-test

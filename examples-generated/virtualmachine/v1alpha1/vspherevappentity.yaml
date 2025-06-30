@@ -1,0 +1,56 @@
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVappEntity
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherevappentity
+  labels:
+    testing.upbound.io/example-name: vapp_entity
+  name: vapp-entity
+spec:
+  forProvider:
+    containerId: ${vsphere_vapp_container.vapp_container.id}
+    startAction: none
+    targetId: ${vsphere_virtual_machine.vm.moid}
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVappContainer
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherevappentity
+  labels:
+    testing.upbound.io/example-name: vapp_container
+  name: vapp-container
+spec:
+  forProvider:
+    name: terraform-vapp-container-test
+    parentResourcePoolId: ${data.vsphere_compute_cluster.compute_cluster.id}
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherevappentity
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 1
+    guestId: ubuntu64Guest
+    memory: 1024
+    name: terraform-virtual-machine-test
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vapp_container
