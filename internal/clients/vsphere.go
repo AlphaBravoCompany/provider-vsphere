@@ -25,11 +25,11 @@ const (
 	errTrackUsage           = "cannot track ProviderConfig usage"
 	errExtractCredentials   = "cannot extract credentials"
 	errUnmarshalCredentials = "cannot unmarshal vsphere credentials as JSON"
-	vsphere_server          = "vsphere_server"
+	vsphereServer           = "vsphere_server"
 	user                    = "user"
 	password                = "password"
 	allowUnverifiedSSL      = "allow_unverified_ssl"
-	api_timeout             = "api_timeout"
+	apiTimeout              = "api_timeout"
 )
 
 // TerraformSetupBuilder builds Terraform a terraform.SetupFn function which
@@ -68,22 +68,11 @@ func TerraformSetupBuilder(version, providerSource, providerVersion string) terr
 		}
 
 		// Set credentials in Terraform provider configuration.
-
-		ps.Configuration = map[string]any{}
-		if v, ok := creds[user]; ok {
-			ps.Configuration[user] = v
-		}
-		if v, ok := creds[password]; ok {
-			ps.Configuration[password] = v
-		}
-		if v, ok := creds[vsphere_server]; ok {
-			ps.Configuration[vsphere_server] = v
-		}
-		if v, ok := creds[allowUnverifiedSSL]; ok {
-			ps.Configuration[allowUnverifiedSSL] = v
-		}
-		if v, ok := creds[api_timeout]; ok {
-			ps.Configuration[api_timeout] = v
+		ps.Configuration = make(map[string]any)
+		for _, key := range []string{user, password, vsphereServer, allowUnverifiedSSL, apiTimeout} {
+			if v, ok := creds[key]; ok {
+				ps.Configuration[key] = v
+			}
 		}
 
 		return ps, nil
