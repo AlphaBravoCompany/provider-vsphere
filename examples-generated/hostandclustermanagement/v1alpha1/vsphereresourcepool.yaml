@@ -1,0 +1,12 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereResourcePool
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vsphereresourcepool
+  labels:
+    testing.upbound.io/example-name: resource_pool
+  name: resource-pool
+spec:
+  forProvider:
+    name: resource-pool-01
+    parentResourcePoolId: ${data.vsphere_compute_cluster.compute_cluster.resource_pool_id}

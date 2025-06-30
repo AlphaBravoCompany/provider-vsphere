@@ -1,0 +1,19 @@
+apiVersion: networking.crossplane.io/v1alpha1
+kind: VSphereHostVirtualSwitch
+metadata:
+  annotations:
+    meta.upbound.io/example-id: networking/v1alpha1/vspherehostvirtualswitch
+  labels:
+    testing.upbound.io/example-name: switch
+  name: switch
+spec:
+  forProvider:
+    activeNics:
+    - vmnic0
+    hostSystemId: ${data.vsphere_host.host.id}
+    name: vSwitchTerraformTest
+    networkAdapters:
+    - vmnic0
+    - vmnic1
+    standbyNics:
+    - vmnic1

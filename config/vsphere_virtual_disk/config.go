@@ -1,6 +1,6 @@
 package vspherevirtualdisk
 
-import "github.com/upbound/upjet/pkg/config"
+import "github.com/crossplane/upjet/pkg/config"
 
 // Configure configures individual resources by adding custom ResourceConfigurators.
 func Configure(p *config.Provider) {
@@ -11,11 +11,11 @@ func Configure(p *config.Provider) {
 		r.Version = "v1alpha1"
 		r.References["datacenter"] = config.Reference{
 			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/inventory/v1alpha1.VSphereDatacenter",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
+			Extractor: `github.com/crossplane/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 		r.References["datastore"] = config.Reference{
 			Type:      "github.com/AlphaBravoCompany/provider-vsphere/apis/storage/v1alpha1.VSphereVmfsDatastore",
-			Extractor: `github.com/upbound/upjet/pkg/resource.ExtractParamPath("Name", true)`,
+			Extractor: `github.com/crossplane/upjet/pkg/resource.ExtractParamPath("Name", true)`,
 		}
 	})
 

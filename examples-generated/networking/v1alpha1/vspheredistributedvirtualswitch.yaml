@@ -1,0 +1,33 @@
+apiVersion: networking.crossplane.io/v1alpha1
+kind: VSphereDistributedVirtualSwitch
+metadata:
+  annotations:
+    meta.upbound.io/example-id: networking/v1alpha1/vspheredistributedvirtualswitch
+  labels:
+    testing.upbound.io/example-name: vds
+  name: vds
+spec:
+  forProvider:
+    activeUplinks:
+    - uplink1
+    - uplink2
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    host:
+    - devices:
+      - ${var.network_interfaces}
+      hostSystemId: ${data.vsphere_host.host.0.id}
+    - devices:
+      - ${var.network_interfaces}
+      hostSystemId: ${data.vsphere_host.host.1.id}
+    - devices:
+      - ${var.network_interfaces}
+      hostSystemId: ${data.vsphere_host.host.2.id}
+    name: vds-01
+    standbyUplinks:
+    - uplink3
+    - uplink4
+    uplinks:
+    - uplink1
+    - uplink2
+    - uplink3
+    - uplink4

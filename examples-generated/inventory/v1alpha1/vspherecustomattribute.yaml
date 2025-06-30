@@ -1,0 +1,12 @@
+apiVersion: inventory.crossplane.io/v1alpha1
+kind: VSphereCustomAttribute
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/vspherecustomattribute
+  labels:
+    testing.upbound.io/example-name: attribute
+  name: attribute
+spec:
+  forProvider:
+    managedObjectType: VirtualMachine
+    name: terraform-test-attribute

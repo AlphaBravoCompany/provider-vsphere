@@ -1,0 +1,25 @@
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherevirtualmachine
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: Hard Disk 1
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 1024
+    name: foo
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 1
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster

@@ -1,0 +1,32 @@
+apiVersion: inventory.crossplane.io/v1alpha1
+kind: VSphereTag
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/vspheretag
+  labels:
+    testing.upbound.io/example-name: tag
+  name: tag
+spec:
+  forProvider:
+    categoryId: ${vsphere_tag_category.category.id}
+    description: Managed by Terraform
+    name: terraform-test-tag
+
+---
+
+apiVersion: inventory.crossplane.io/v1alpha1
+kind: VSphereTagCategory
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/vspheretag
+  labels:
+    testing.upbound.io/example-name: category
+  name: category
+spec:
+  forProvider:
+    associableTypes:
+    - VirtualMachine
+    - Datastore
+    cardinality: SINGLE
+    description: Managed by Terraform
+    name: terraform-test-category

@@ -1,0 +1,13 @@
+apiVersion: workloadmanagement.crossplane.io/v1alpha1
+kind: VSphereVirtualMachineClass
+metadata:
+  annotations:
+    meta.upbound.io/example-id: workloadmanagement/v1alpha1/vspherevirtualmachineclass
+  labels:
+    testing.upbound.io/example-name: basic_class
+  name: basic-class
+spec:
+  forProvider:
+    cpus: 4
+    memory: 4096
+    name: basic-class

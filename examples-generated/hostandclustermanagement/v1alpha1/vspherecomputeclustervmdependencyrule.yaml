@@ -1,0 +1,104 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterVmDependencyRule
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmdependencyrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_dependency_rule
+  name: cluster-vm-dependency-rule
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    dependencyVmGroupName: terraform-test-cluster-vm-group
+    name: terraform-test-cluster-vm-dependency-rule
+    vmGroupName: terraform-test-cluster-vm-group
+
+---
+
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterVmGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmdependencyrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_group1
+  name: cluster-vm-group1
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: terraform-test-cluster-vm-group1
+    virtualMachineIds:
+    - ${vsphere_virtual_machine.vm1.id}
+
+---
+
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterVmGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmdependencyrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_group2
+  name: cluster-vm-group2
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: terraform-test-cluster-vm-group2
+    virtualMachineIds:
+    - ${vsphere_virtual_machine.vm2.id}
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmdependencyrule
+  labels:
+    testing.upbound.io/example-name: vm1
+  name: vm1
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 2048
+    name: terraform-test1
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmdependencyrule
+  labels:
+    testing.upbound.io/example-name: vm2
+  name: vm2
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 2048
+    name: terraform-test2
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster

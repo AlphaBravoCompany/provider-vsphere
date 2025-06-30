@@ -1,0 +1,42 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeClusterVmAntiAffinityRule
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmantiaffinityrule
+  labels:
+    testing.upbound.io/example-name: vm_anti_affinity_rule
+  name: vm-anti-affinity-rule
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: vm-anti-affinity-rule
+    virtualMachineIds: '${[for k, v in vsphere_virtual_machine.vm : v.id]}'
+
+---
+
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereVirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputeclustervmantiaffinityrule
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    count: 2
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 1024
+    name: foo-${count.index}
+    networkInterface:
+    - networkId: ${data.vsphere_network.network.id}
+    numCpus: 1
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster

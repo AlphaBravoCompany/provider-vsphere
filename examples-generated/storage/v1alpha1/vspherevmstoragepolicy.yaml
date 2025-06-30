@@ -1,0 +1,25 @@
+apiVersion: storage.crossplane.io/v1alpha1
+kind: VSphereVmStoragePolicy
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/vspherevmstoragepolicy
+  labels:
+    testing.upbound.io/example-name: prod_platinum_replicated
+  name: prod-platinum-replicated
+spec:
+  forProvider:
+    description: prod_platinum_replicated
+    name: prod_platinum_replicated
+    tagRules:
+    - includeDatastoresWithTags: true
+      tagCategory: ${data.vsphere_tag_category.environment.name}
+      tags:
+      - ${data.vsphere_tag.production.name}
+    - includeDatastoresWithTags: true
+      tagCategory: ${data.vsphere_tag_category.service_level.name}
+      tags:
+      - ${data.vsphere_tag.platinum.name}
+    - includeDatastoresWithTags: true
+      tagCategory: ${data.vsphere_tag_category.replication.name}
+      tags:
+      - ${data.vsphere_tag.replicated.name}

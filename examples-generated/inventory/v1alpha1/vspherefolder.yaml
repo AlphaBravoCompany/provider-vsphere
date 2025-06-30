@@ -1,0 +1,13 @@
+apiVersion: inventory.crossplane.io/v1alpha1
+kind: VSphereFolder
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/vspherefolder
+  labels:
+    testing.upbound.io/example-name: folder
+  name: folder
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    path: terraform-test-folder
+    type: vm

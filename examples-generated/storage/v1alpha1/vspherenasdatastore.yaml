@@ -1,0 +1,17 @@
+apiVersion: storage.crossplane.io/v1alpha1
+kind: VSphereNasDatastore
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/vspherenasdatastore
+  labels:
+    testing.upbound.io/example-name: datastore
+  name: datastore
+spec:
+  forProvider:
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-test
+    remoteHosts:
+    - nfs
+    remotePath: /export/terraform-test
+    type: NFS

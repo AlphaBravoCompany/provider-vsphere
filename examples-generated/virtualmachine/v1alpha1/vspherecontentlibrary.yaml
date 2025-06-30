@@ -1,0 +1,14 @@
+apiVersion: virtualmachine.crossplane.io/v1alpha1
+kind: VSphereContentLibrary
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/vspherecontentlibrary
+  labels:
+    testing.upbound.io/example-name: publisher_content_library
+  name: publisher-content-library
+spec:
+  forProvider:
+    description: A publishing content library.
+    name: Publisher Content Library
+    storageBacking:
+    - ${data.vsphere_datastore.publisher_datastore.id}

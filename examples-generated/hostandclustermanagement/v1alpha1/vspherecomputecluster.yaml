@@ -1,0 +1,16 @@
+apiVersion: hostandclustermanagement.crossplane.io/v1alpha1
+kind: VSphereComputeCluster
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vspherecomputecluster
+  labels:
+    testing.upbound.io/example-name: compute_cluster
+  name: compute-cluster
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    drsAutomationLevel: fullyAutomated
+    drsEnabled: true
+    haEnabled: true
+    hostSystemIds: '${[for host in data.vsphere_host.host : host.id]}'
+    name: terraform-compute-cluster-test

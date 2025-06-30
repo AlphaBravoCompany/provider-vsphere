@@ -1,0 +1,11 @@
+apiVersion: inventory.crossplane.io/v1alpha1
+kind: VSphereDatacenter
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/vspheredatacenter
+  labels:
+    testing.upbound.io/example-name: prod_datacenter
+  name: prod-datacenter
+spec:
+  forProvider:
+    name: my_prod_datacenter
