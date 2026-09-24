@@ -9,3 +9,7 @@ cover.out
 # ignore IDE folders
 .vscode/
 .idea/
+
+# local MCP / Serena config (Foundry)
+/.mcp.json
+/.serena/
