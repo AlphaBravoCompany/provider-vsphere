@@ -3,17 +3,29 @@ kind: Provider
 metadata:
   name: provider-vsphere
   annotations:
-    meta.crossplane.io/maintainer: Crossplane Maintainers https://github.com/AlphaBravoCompany/provider-vsphere/issues
+    meta.crossplane.io/maintainer: AlphaBravo <https://github.com/AlphaBravoCompany/provider-vsphere/issues>
     meta.crossplane.io/source: github.com/AlphaBravoCompany/provider-vsphere
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
-      VMware vSphere Crossplane provider adds support for
-      managing vSphere resources in Kubernetes.
+      Crossplane provider for VMware vSphere, built with upjet v2. The
+      vmware/vsphere Terraform provider 2.15.1 runs in-process inside the
+      provider binary, so no Terraform CLI and no provider plugin binary is used
+      at runtime.
     meta.crossplane.io/readme: |
-      `provider-vsphere` is the Crossplane infrastructure provider for [VMware vSphere]
-      (https://www.vmware.com/products/vsphere.html).
-      If you encounter an issue please reach out on
-      [slack.crossplane.io](https://slack.crossplane.io) and create an issue in
-      the
-      [AlphaBravoCompany/provider-vsphere](https://github.com/AlphaBravoCompany/provider-vsphere)
-      repo.
+      `provider-vsphere` manages [VMware vSphere](https://www.vmware.com/products/vsphere.html)
+      resources from Kubernetes. Every resource is available as a cluster-scoped
+      managed resource under `*.vsphere.alphabravo.io` and as a namespaced managed
+      resource under `*.vsphere.m.alphabravo.io`. Requires Crossplane v2.0.0 or newer.
+
+      See the [README](https://github.com/AlphaBravoCompany/provider-vsphere#readme),
+      [MIGRATION.md](https://github.com/AlphaBravoCompany/provider-vsphere/blob/main/MIGRATION.md)
+      and [RELEASING.md](https://github.com/AlphaBravoCompany/provider-vsphere/blob/main/RELEASING.md).
+      Report issues at
+      [AlphaBravoCompany/provider-vsphere](https://github.com/AlphaBravoCompany/provider-vsphere/issues).
+    alphabravo.io/terraform-provider-source: vmware/vsphere
+    alphabravo.io/terraform-provider-version: "2.15.1"
+spec:
+  crossplane:
+    version: ">=v2.0.0"
+  capabilities:
+    - SafeStart
