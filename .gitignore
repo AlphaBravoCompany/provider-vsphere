@@ -13,3 +13,12 @@ cover.out
 # local MCP / Serena config (Foundry)
 /.mcp.json
 /.serena/
+
+# Forge/Foundry working files (spec.md, spec.json and the context brief are committed)
+/docs/specs/*/survey/
+/docs/specs/*/reality.md
+/docs/specs/*/draft.md
+/docs/specs/*/progress.txt
+/docs/specs/*/spec-review.json
+/docs/specs/*/transcript.md
+/foundry-archive/

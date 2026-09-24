@@ -1,0 +1,1175 @@
+{
+  "feature": "vsphere-provider-upgrade",
+  "spec_format_version": "v2.1",
+  "spec_type": "MIGRATION",
+  "forge_mode": "cosmetic",
+  "spec_path": "docs/specs/vsphere-provider-upgrade/spec.md",
+  "transcript_path": "docs/specs/vsphere-provider-upgrade/transcript.md",
+  "reality_path": "docs/specs/vsphere-provider-upgrade/reality.md",
+  "spec_review": {
+    "verdict": "pass",
+    "path": "docs/specs/vsphere-provider-upgrade/spec-review.json"
+  },
+  "global_invariants": [
+    {
+      "ID": "GI-001",
+      "statement": "No-fork (Recommended)",
+      "applies-to": "config/provider.go, cmd/provider/main.go, internal/clients, generated controllers, runtime Dockerfile",
+      "violation": "Any resource left in the CLI IncludeList; generated controllers calling tjcontroller.NewConnector with a WorkspaceStore; a terraform binary or provider zip copied into the runtime image",
+      "citation": "[from A-004]"
+    },
+    {
+      "ID": "GI-002",
+      "statement": "No BSL + no runtime TF (Recommended)",
+      "applies-to": "Makefile, cluster/images Dockerfile, CI workflow, runtime image",
+      "violation": "Downloading any Terraform release at or above 1.6 anywhere; a Terraform binary or provider zip in the runtime image; runtime code shelling out to a Terraform CLI",
+      "citation": "[from A-032]"
+    },
+    {
+      "ID": "GI-003",
+      "statement": "No BSL Terraform, follow guide (Recommended)",
+      "applies-to": "Makefile schema target, check-terraform-version guard, generation flow",
+      "violation": "Deleting the version guard; replacing the upstream guide flow with a hand-written schema generator or OpenTofu; TERRAFORM_VERSION set to 1.6 or newer",
+      "citation": "[from A-007]"
+    },
+    {
+      "ID": "GI-004",
+      "statement": "Cache per ProviderConfig (Recommended)",
+      "applies-to": "internal/clients TerraformSetupBuilder",
+      "violation": "Calling vsphere Provider Configure (a vCenter login) on every reconcile without consulting a cache keyed by ProviderConfig identity plus credentials hash",
+      "citation": "[from A-015]"
+    },
+    {
+      "ID": "GI-005",
+      "statement": "Shared configurators (Recommended)",
+      "applies-to": "config/ resource configurator packages",
+      "violation": "Copy-pasted config/cluster/X and config/namespaced/X trees with duplicated bodies",
+      "citation": "[from A-027]"
+    }
+  ],
+  "state_transitions": [
+    {
+      "ID": "ST-001",
+      "from-state": "no cached client",
+      "to-state": "cached configured client",
+      "trigger": "first reconcile of any MR referencing a given ProviderConfig or ClusterProviderConfig",
+      "guard": "credentials parse and the vCenter login succeeds",
+      "citation": "[from A-015]"
+    },
+    {
+      "ID": "ST-002",
+      "from-state": "cached configured client",
+      "to-state": "rebuilt configured client",
+      "trigger": "credentials Secret content changes so the hash differs",
+      "guard": "new credentials parse and login succeeds",
+      "citation": "[from A-015]"
+    },
+    {
+      "ID": "ST-003",
+      "from-state": "cached configured client",
+      "to-state": "evicted",
+      "trigger": "vSphere API call fails with an authentication or session error",
+      "guard": "eviction must happen before the next reconcile retries",
+      "citation": "[from A-015]"
+    },
+    {
+      "ID": "ST-004",
+      "from-state": "latest points at legacy 2.12.0 build",
+      "to-state": "latest points at v2.15.1",
+      "trigger": "release engineer moves the tag via manifest copy",
+      "guard": "lab e2e passed against the published v2.15.1 index",
+      "citation": "[from A-029]"
+    },
+    {
+      "ID": "ST-005",
+      "from-state": "released v2.15.1",
+      "to-state": "released v2.15.1-N",
+      "trigger": "provider-only fix is released",
+      "guard": "Terraform provider version is still 2.15.1",
+      "citation": "[from A-020]"
+    }
+  ],
+  "contracts": [
+    {
+      "ID": "CT-001",
+      "surface": "Credentials Secret referenced by ProviderConfig or ClusterProviderConfig (key credentials)",
+      "input": "JSON object: user, password, vsphere_server as strings; allow_unverified_ssl as string or boolean; api_timeout as string or number",
+      "output": "typed map passed as terraform Setup Configuration to the in-process vSphere provider",
+      "errors": "missing user, password or vsphere_server yields a reconcile error naming the key; unparsable boolean or number yields an error naming the key",
+      "citation": "[from A-016]"
+    },
+    {
+      "ID": "CT-002",
+      "surface": "Managed resource API groups",
+      "input": "Terraform resource vsphere_X with its short group",
+      "output": "SHORTGROUP.vsphere.alphabravo.io/v1alpha1 for cluster scope and SHORTGROUP.vsphere.m.alphabravo.io/v1alpha1 for namespaced scope",
+      "errors": "none",
+      "citation": "[from A-008]"
+    },
+    {
+      "ID": "CT-003",
+      "surface": "Managed resource Kind names",
+      "input": "legacy Kind such as VSphereVirtualMachine",
+      "output": "legacy Kind with the leading VSphere prefix removed, such as VirtualMachine",
+      "errors": "none",
+      "citation": "[from A-009]"
+    },
+    {
+      "ID": "CT-004",
+      "surface": "make publish after an interactive docker login",
+      "input": "VERSION tag and XPKG_REG_ORGS pointing at the alphabravodevops Docker Hub org",
+      "output": "one multi-arch OCI index docker.io/alphabravodevops/provider-vsphere:VERSION holding linux_amd64 and linux_arm64 xpkgs",
+      "errors": "not logged in makes the push fail; no credential is read from the repository",
+      "citation": "[from A-018]"
+    },
+    {
+      "ID": "CT-005",
+      "surface": "Lab e2e make target run by a human",
+      "input": "current kube context (k3s), provider package tag, Crossplane version, lab vCenter credentials and VM placement IDs from environment variables",
+      "output": "pass or fail report per scope; all created resources deleted",
+      "errors": "a missing environment variable aborts before any cluster change",
+      "citation": "[from A-023]"
+    },
+    {
+      "ID": "CT-006",
+      "surface": "Release tag",
+      "input": "Terraform provider version plus provider-only fix counter",
+      "output": "v2.15.1 for the first release; v2.15.1-1, v2.15.1-2 for provider-only fixes",
+      "errors": "none",
+      "citation": "[from A-020]"
+    },
+    {
+      "ID": "CT-007",
+      "surface": "package/crossplane.yaml Crossplane constraint",
+      "input": "Crossplane core version on the cluster",
+      "output": "installs on Crossplane v2.0.0 and newer",
+      "errors": "Crossplane older than v2.0.0 rejects the package",
+      "citation": "[from A-022]"
+    }
+  ],
+  "requirements": {
+    "functional": {
+      "locked": [
+        {
+          "id": "FR-001",
+          "citation": "from A-003",
+          "text": "\"MIGRATION (Recommended)\""
+        },
+        {
+          "id": "FR-002",
+          "citation": "from A-004",
+          "text": "\"No-fork (Recommended)\""
+        },
+        {
+          "id": "FR-003",
+          "citation": "from A-007",
+          "text": "\"No BSL Terraform, follow guide (Recommended)\""
+        },
+        {
+          "id": "FR-004",
+          "citation": "from A-008",
+          "text": "\"vsphere.alphabravo.io (Recommended)\""
+        },
+        {
+          "id": "FR-005",
+          "citation": "from A-009",
+          "text": "\"Drop prefix (Recommended)\""
+        },
+        {
+          "id": "FR-006",
+          "citation": "from A-010",
+          "text": "\"v1alpha1 (Recommended)\""
+        },
+        {
+          "id": "FR-007",
+          "citation": "from A-011",
+          "text": "\"Confirm all 45 (Recommended)\""
+        },
+        {
+          "id": "FR-008",
+          "citation": "from A-012",
+          "text": "\"Fix + add core VM refs (Recommended)\""
+        },
+        {
+          "id": "FR-009",
+          "citation": "from A-013",
+          "text": "\"Proactive + test (Recommended)\""
+        },
+        {
+          "id": "FR-010",
+          "citation": "from A-014",
+          "text": "\"Scraper + VM example (Recommended)\""
+        },
+        {
+          "id": "FR-011",
+          "citation": "from A-015",
+          "text": "\"Cache per ProviderConfig (Recommended)\""
+        },
+        {
+          "id": "FR-012",
+          "citation": "from A-016",
+          "text": "\"Same keys, accept both (Recommended)\""
+        },
+        {
+          "id": "FR-013",
+          "citation": "from A-017",
+          "text": "\"Mirror TF version\""
+        },
+        {
+          "id": "FR-014",
+          "citation": "from A-020",
+          "text": "\"v2.15.1-N suffix (Recommended)\""
+        },
+        {
+          "id": "FR-015",
+          "citation": "from A-018",
+          "text": "\"Make targets + runbook (Recommended)\""
+        },
+        {
+          "id": "FR-016",
+          "citation": "from A-019",
+          "text": "\"Minimal PR CI (Recommended)\""
+        },
+        {
+          "id": "FR-017",
+          "citation": "from A-025",
+          "text": "\"Docs + metadata, Remove dead files, Image base, Lint config v2\""
+        },
+        {
+          "id": "FR-018",
+          "citation": "from A-026",
+          "text": "\"MIGRATION.md in repo (Recommended)\""
+        },
+        {
+          "id": "FR-019",
+          "citation": "from A-027",
+          "text": "\"Shared configurators (Recommended)\""
+        },
+        {
+          "id": "FR-020",
+          "citation": "from A-029",
+          "text": "\"Keep old, move latest (Recommended)\""
+        },
+        {
+          "id": "FR-021",
+          "citation": "from A-030",
+          "text": "\"Enable if template-standard (Recommended)\""
+        },
+        {
+          "id": "FR-022",
+          "citation": "from A-028",
+          "text": "\"One PR, logical commits (Recommended)\""
+        },
+        {
+          "id": "FR-023",
+          "citation": "from A-032",
+          "text": "\"No BSL + no runtime TF (Recommended)\""
+        },
+        {
+          "id": "FR-024",
+          "citation": "from A-033",
+          "text": "\"Current alpine (Recommended)\""
+        },
+        {
+          "id": "FR-025",
+          "citation": "from A-034",
+          "text": "\"Delete it (Recommended)\""
+        }
+      ],
+      "flexible": [
+        {
+          "id": "FR-101",
+          "citation": "derived from A-003, A-011",
+          "text": "Adopt the `crossplane/upjet-provider-template@main` layout: `apis/cluster`, `apis/namespaced`, `internal/controller/cluster`, `internal/controller/namespaced`, `GetProvider()` and `GetProviderNamespaced()`, and `pipeline.Run(pc, pns, root)`."
+        },
+        {
+          "id": "FR-102",
+          "citation": "derived from A-004",
+          "text": "Pin `github.com/vmware/terraform-provider-vsphere` at pseudo-version `v1.26.1-0.20260319130334-b2eabd5702e1`, which is tag v2.15.1 at commit b2eabd57, with a go.mod comment explaining why the version string looks unusual."
+        },
+        {
+          "id": "FR-103",
+          "citation": "derived from A-004",
+          "text": "Target `github.com/crossplane/upjet/v2` v2.5.0 and set the go directive to `1.26.8` so it matches upjet's floor."
+        },
+        {
+          "id": "FR-104",
+          "citation": "derived from A-012",
+          "text": "Implement references with `config.Reference{TerraformName: ...}` in the shared VM configurator: datacenter_id to vsphere_datacenter; resource_pool_id to vsphere_resource_pool; datastore_id to vsphere_vmfs_datastore and vsphere_nas_datastore; datastore_cluster_id to vsphere_datastore_cluster; host_system_id to vsphere_host; folder to vsphere_folder using its path; network_interface.network_id to vsphere_distributed_port_group; storage_policy_id to vsphere_vm_storage_policy. Fix the VirtualDisk datacenter and datastore references with correct extractors."
+        },
+        {
+          "id": "FR-105",
+          "citation": "derived from A-013",
+          "text": "Configure LateInitializer IgnoredFields and, where needed, custom diff suppression for provider-defaulted VM fields: `ept_rvi_mode`, `hv_mode`, plus any field the lab e2e shows round-tripping. Set VM operation timeouts long enough for clone and OVF deploy."
+        },
+        {
+          "id": "FR-106",
+          "citation": "derived from A-015",
+          "text": "Implement the session cache in `internal/clients`, keyed by ProviderConfig kind, namespace and name plus a SHA-256 of the extracted credentials. Store the configured `vsphere.Provider()` Meta, evict on authentication or session errors, and protect it with a mutex."
+        },
+        {
+          "id": "FR-107",
+          "citation": "derived from A-016",
+          "text": "Parse credentials into typed values: booleans accept true, false and their string forms; api_timeout accepts a number or a numeric string. Return errors that name the offending key, and never log secret values."
+        },
+        {
+          "id": "FR-108",
+          "citation": "derived from A-014",
+          "text": "Add the upjet v2 scraper go:generate step reading the pulled `docs/resources` from the vmware repo so `config/provider-metadata.yaml` is real, and hand-write `examples/cluster/virtualmachine/`, `examples/namespaced/virtualmachine/`, and ProviderConfig, ClusterProviderConfig and Secret examples."
+        },
+        {
+          "id": "FR-109",
+          "citation": "derived from A-018, A-020",
+          "text": "RELEASING.md documents the interactive docker login, `make build.all publish`, verifying the index, creating `latest` with `docker buildx imagetools create`, and the `vX.Y.Z-N` fix-tag rule."
+        },
+        {
+          "id": "FR-110",
+          "citation": "derived from A-030",
+          "text": "Declare the SafeStart capability in `package/crossplane.yaml` and wire the template's gated setup in `cmd/provider/main.go`; the lab e2e records whether it engaged but does not gate on it."
+        },
+        {
+          "id": "FR-111",
+          "citation": "derived from A-023, A-022",
+          "text": "Add a manually-run lab e2e target that installs Crossplane (parameterized version) and the provider tag on the current kube context. It reads lab IDs and credentials from environment variables, applies cluster and namespaced VM examples, asserts the US-002, US-005 and US-006 criteria, and cleans up."
+        },
+        {
+          "id": "FR-112",
+          "citation": "derived from A-024",
+          "text": "Add Go unit tests for credential parsing and session-cache keying and eviction, run in CI and not a release gate."
+        },
+        {
+          "id": "FR-113",
+          "citation": "derived from A-028",
+          "text": "Commit order: toolchain and build submodule; upjet v2 skeleton and hand-written code; shared configurators; generated code in its own commits; packaging and image; docs, CI and cleanup."
+        }
+      ]
+    },
+    "non_functional": {
+      "locked": [
+        {
+          "id": "NFR-001",
+          "citation": "from A-022",
+          "text": "\"v2.2.0 + v2.4.2, >=v2.0 (Recommended)\""
+        },
+        {
+          "id": "NFR-002",
+          "citation": "from A-021",
+          "text": "\"Lab e2e on k3s\""
+        },
+        {
+          "id": "NFR-003",
+          "citation": "from A-024",
+          "text": "\"Targeted, non-blocking (Recommended)\""
+        }
+      ],
+      "flexible": [
+        {
+          "id": "NFR-101",
+          "citation": "derived from A-002, A-015",
+          "text": "With 100 VMs on one ProviderConfig, the provider holds one vCenter session per pod for that ProviderConfig in steady state."
+        },
+        {
+          "id": "NFR-102",
+          "citation": "derived from A-004, A-032, A-033",
+          "text": "The runtime image contains only the provider binary on a current alpine base, with no Terraform and no network fetch at startup, so it works in Pioneer airgap mode."
+        },
+        {
+          "id": "NFR-103",
+          "citation": "derived from A-018",
+          "text": "No credential of any kind (Docker Hub or vCenter) is committed; e2e and release read credentials only from the environment or an interactive login."
+        },
+        {
+          "id": "NFR-104",
+          "citation": "derived from A-021",
+          "text": "`make generate` is deterministic: a second run yields zero diff."
+        }
+      ]
+    }
+  },
+  "user_stories": [
+    {
+      "id": "US-001",
+      "title": "Build the provider without BSL Terraform",
+      "citation": "derived from A-005, A-007, A-021, A-032"
+    },
+    {
+      "id": "US-002",
+      "title": "Deploy VirtualMachines in either scope on Crossplane v2",
+      "citation": "derived from A-003, A-008, A-021, A-022"
+    },
+    {
+      "id": "US-003",
+      "title": "Publish v2.15.1 as one multi-arch package",
+      "citation": "derived from A-017, A-018, A-020, A-021, A-029"
+    },
+    {
+      "id": "US-004",
+      "title": "Compose VMs with working references",
+      "citation": "derived from A-012"
+    },
+    {
+      "id": "US-005",
+      "title": "VMs stay stable after creation",
+      "citation": "derived from A-013"
+    },
+    {
+      "id": "US-006",
+      "title": "Stay within vCenter session limits at 20–100 VMs",
+      "citation": "derived from A-002, A-015"
+    },
+    {
+      "id": "US-007",
+      "title": "Hand Pioneer an exact migration map",
+      "citation": "derived from A-026"
+    },
+    {
+      "id": "US-008",
+      "title": "Contributors get working CI and docs",
+      "citation": "derived from A-019, A-024, A-025"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "id": "AC-001",
+      "citation": "from A-021",
+      "text": "\"Build/generate/lint clean\""
+    },
+    {
+      "id": "AC-002",
+      "citation": "derived from A-007",
+      "text": "Setting `TERRAFORM_VERSION=1.6.0` makes `make generate` fail with the check-terraform-version error before any download (error case)."
+    },
+    {
+      "id": "AC-003",
+      "citation": "derived from A-004, A-005",
+      "text": "The built runtime image contains no `terraform` binary and no provider plugin zip; `docker run --entrypoint sh` shows no `/usr/local/bin/terraform` and no `/terraform/provider-mirror` (edge case)."
+    },
+    {
+      "id": "AC-004",
+      "citation": "derived from A-021",
+      "text": "Running `make generate` twice in a row produces no git diff."
+    },
+    {
+      "id": "AC-005",
+      "citation": "derived from A-021, A-022",
+      "text": "On k3s with Crossplane v2.2.0 and again with v2.4.2, a cluster-scoped `virtualmachine.vsphere.alphabravo.io/v1alpha1` VirtualMachine and a namespaced `virtualmachine.vsphere.m.alphabravo.io/v1alpha1` VirtualMachine using Pioneer's field profile both reach Ready=True and Synced=True."
+    },
+    {
+      "id": "AC-006",
+      "citation": "derived from A-021",
+      "text": "Changing `numCpus` or `memory` on each VM updates it in place without recreate, and deleting each MR removes the VM from vCenter."
+    },
+    {
+      "id": "AC-007",
+      "citation": "derived from A-016, A-021",
+      "text": "A namespaced VM whose providerConfigRef names a missing ProviderConfig reports Synced=False with a message naming the missing config (error case)."
+    },
+    {
+      "id": "AC-008",
+      "citation": "derived from A-022",
+      "text": "Installing the package on a Crossplane older than v2.0.0 is rejected by the package manager (edge case)."
+    },
+    {
+      "id": "AC-009",
+      "citation": "from A-021",
+      "text": "\"Published v2.15.1\""
+    },
+    {
+      "id": "AC-010",
+      "citation": "derived from A-018",
+      "text": "`crane manifest docker.io/alphabravodevops/provider-vsphere:v2.15.1` returns an OCI image index with linux/amd64 and linux/arm64 entries, and the lab e2e installs the provider from that exact tag."
+    },
+    {
+      "id": "AC-011",
+      "citation": "derived from A-018",
+      "text": "Running the publish target without a prior `docker login` fails without pushing anything, and no credential file is added to git (error case)."
+    },
+    {
+      "id": "AC-012",
+      "citation": "derived from A-029",
+      "text": "All pre-existing `2.12.0-terraform-vsphere*` tags still resolve after the release, and `latest` resolves to the v2.15.1 index digest only after the e2e passed (edge case)."
+    },
+    {
+      "id": "AC-013",
+      "citation": "from A-012",
+      "text": "\"Fix + add core VM refs (Recommended)\""
+    },
+    {
+      "id": "AC-014",
+      "citation": "derived from A-012",
+      "text": "A VirtualMachine using `resourcePoolIdRef` to a ResourcePool MR resolves `resourcePoolId` to that pool's ID, not a compute cluster ID."
+    },
+    {
+      "id": "AC-015",
+      "citation": "derived from A-012",
+      "text": "A reference to an MR that is not yet Ready leaves the VM unresolved with a ReferencesResolved-style condition instead of an empty ID (error case)."
+    },
+    {
+      "id": "AC-016",
+      "citation": "derived from A-012",
+      "text": "`datastoreIdRef` resolves when it points at either a VmfsDatastore or a NasDatastore (edge case)."
+    },
+    {
+      "id": "AC-017",
+      "citation": "from A-013",
+      "text": "\"Proactive + test (Recommended)\""
+    },
+    {
+      "id": "AC-018",
+      "citation": "derived from A-013",
+      "text": "After a VM is Ready, 3 consecutive poll cycles show no update calls for provider-defaulted fields such as `eptRviMode` and `hvMode`."
+    },
+    {
+      "id": "AC-019",
+      "citation": "derived from A-013",
+      "text": "A VM powered off out of band stays powered off after the next reconcile when only an unrelated field such as `annotation` is changed (error case)."
+    },
+    {
+      "id": "AC-020",
+      "citation": "from A-015",
+      "text": "\"Cache per ProviderConfig (Recommended)\""
+    },
+    {
+      "id": "AC-021",
+      "citation": "derived from A-002, A-015",
+      "text": "During the lab e2e, the vCenter session count attributed to the provider user stays at or below the number of distinct ProviderConfigs per provider pod across at least 3 poll intervals."
+    },
+    {
+      "id": "AC-022",
+      "citation": "derived from A-015",
+      "text": "Rotating the password in the credentials Secret makes the next reconcile use a new client and succeed; the old cached client is not reused (error case)."
+    },
+    {
+      "id": "AC-023",
+      "citation": "from A-026",
+      "text": "\"MIGRATION.md in repo (Recommended)\""
+    },
+    {
+      "id": "AC-024",
+      "citation": "derived from A-026",
+      "text": "MIGRATION.md contains one row per inventory resource with legacy group/kind and new cluster and namespaced group/kind, and names the Pioneer files `internal/operator/manifest/machines_network.go`, `internal/operator/manifest/resources_vmware.go`, `internal/operator/statussync/watcher.go`, `internal/operator/lifecycle/seed_ip_resolver.go`, `internal/operator/manifest/crossplane.go`, `internal/airgap/bom/registry.go`."
+    },
+    {
+      "id": "AC-025",
+      "citation": "derived from A-026",
+      "text": "MIGRATION.md warns that a namespaced MR without providerConfigRef defaults to a ClusterProviderConfig named default (edge case)."
+    },
+    {
+      "id": "AC-026",
+      "citation": "from A-019",
+      "text": "\"Minimal PR CI (Recommended)\""
+    },
+    {
+      "id": "AC-027",
+      "citation": "derived from A-019, A-024",
+      "text": "A PR triggers one workflow running golangci-lint v2, generate plus check-diff, build for both arches, unit tests and crddiff, with no registry login step."
+    },
+    {
+      "id": "AC-028",
+      "citation": "derived from A-025",
+      "text": "`hack/prepare.sh`, `examples/storeconfig/vault.yaml` and the Upbound backport, commands, e2e and tag workflows no longer exist (edge case)."
+    }
+  ],
+  "observable_truths": [
+    {
+      "id": "OT-001",
+      "citation": "from A-021",
+      "text": "`make generate`, `make lint` and `make build.all` succeed on a clean checkout, and a second `make generate` leaves `git status` clean."
+    },
+    {
+      "id": "OT-002",
+      "citation": "derived from A-007",
+      "text": "`make generate` with TERRAFORM_VERSION=1.6.0 fails at the version guard."
+    },
+    {
+      "id": "OT-003",
+      "citation": "derived from A-004, A-032",
+      "text": "The runtime image filesystem contains no terraform binary and no provider mirror directory."
+    },
+    {
+      "id": "OT-004",
+      "citation": "derived from A-004",
+      "text": "`go.mod` requires `github.com/crossplane/upjet/v2 v2.5.0` and the vsphere pseudo-version for tag v2.15.1; no `github.com/upbound/upjet` import remains."
+    },
+    {
+      "id": "OT-005",
+      "citation": "derived from A-004",
+      "text": "Every generated controller uses the TerraformPluginSDK async connector; `grep -r NewWorkspaceStore internal/` returns nothing."
+    },
+    {
+      "id": "OT-006",
+      "citation": "derived from A-008, A-011",
+      "text": "`package/crds` contains exactly 45 CRDs in `*.vsphere.alphabravo.io` groups and 45 in `*.vsphere.m.alphabravo.io` groups, plus the provider-config CRDs."
+    },
+    {
+      "id": "OT-007",
+      "citation": "derived from A-009",
+      "text": "No generated Kind starts with `VSphere`."
+    },
+    {
+      "id": "OT-008",
+      "citation": "derived from A-010",
+      "text": "Every generated MR CRD serves only version v1alpha1."
+    },
+    {
+      "id": "OT-009",
+      "citation": "derived from A-011",
+      "text": "`vsphere_distributed_virtual_switch_pvlan_mapping` and `vsphere_configuration_profile` exist as DistributedVirtualSwitchPvlanMapping and ConfigurationProfile in both scopes."
+    },
+    {
+      "id": "OT-010",
+      "citation": "derived from A-014",
+      "text": "No CRD description contains the text `<no value>`, and `examples-generated/` exists after `make generate`."
+    },
+    {
+      "id": "OT-011",
+      "citation": "derived from A-012",
+      "text": "The VM CRD in both scopes exposes Ref and Selector fields for datacenterId, resourcePoolId, datastoreId, datastoreClusterId, hostSystemId, folder, networkInterface networkId and storagePolicyId."
+    },
+    {
+      "id": "OT-012",
+      "citation": "derived from A-016",
+      "text": "A Secret with allow_unverified_ssl as the string true and one with the boolean true both configure the provider successfully."
+    },
+    {
+      "id": "OT-013",
+      "citation": "derived from A-016",
+      "text": "A Secret missing vsphere_server yields a Synced=False condition message containing vsphere_server."
+    },
+    {
+      "id": "OT-014",
+      "citation": "derived from A-015",
+      "text": "Two MRs sharing one ProviderConfig cause exactly one vsphere Provider Configure call per pod until the credentials change."
+    },
+    {
+      "id": "OT-015",
+      "citation": "derived from A-015",
+      "text": "After a vCenter authentication error the cache entry is evicted and the next reconcile configures a new client."
+    },
+    {
+      "id": "OT-016",
+      "citation": "derived from A-030",
+      "text": "The provider starts with SafeStart gating when CRD watch RBAC is present and falls back to eager setup otherwise, logging which path it took."
+    },
+    {
+      "id": "OT-017",
+      "citation": "derived from A-021, A-022",
+      "text": "Cluster and namespaced VirtualMachine MRs with Pioneer's field profile reach Ready and Synced on Crossplane v2.2.0 and v2.4.2."
+    },
+    {
+      "id": "OT-018",
+      "citation": "derived from A-013",
+      "text": "A Ready VM shows no repeated update operations for three poll intervals."
+    },
+    {
+      "id": "OT-019",
+      "citation": "derived from A-013",
+      "text": "An out-of-band powered-off VM is not powered on by an unrelated field change."
+    },
+    {
+      "id": "OT-020",
+      "citation": "derived from A-012",
+      "text": "resourcePoolIdRef to a ResourcePool resolves to the pool ID."
+    },
+    {
+      "id": "OT-021",
+      "citation": "derived from A-021",
+      "text": "Deleting each VM MR removes the VM from vCenter."
+    },
+    {
+      "id": "OT-022",
+      "citation": "derived from A-018, A-021",
+      "text": "docker.io/alphabravodevops/provider-vsphere:v2.15.1 is an OCI index with linux/amd64 and linux/arm64."
+    },
+    {
+      "id": "OT-023",
+      "citation": "derived from A-029",
+      "text": "Legacy 2.12.0 tags still resolve after release, and latest equals the v2.15.1 digest."
+    },
+    {
+      "id": "OT-024",
+      "citation": "derived from A-022",
+      "text": "package/crossplane.yaml declares a Crossplane constraint of v2.0.0 or newer."
+    },
+    {
+      "id": "OT-025",
+      "citation": "derived from A-018",
+      "text": "No file in the repository contains Docker Hub or vCenter credentials."
+    },
+    {
+      "id": "OT-026",
+      "citation": "derived from A-020",
+      "text": "RELEASING.md states the v2.15.1-N rule for provider-only fixes."
+    },
+    {
+      "id": "OT-027",
+      "citation": "derived from A-019",
+      "text": "The only workflow file is ci.yml, and it has no registry login step."
+    },
+    {
+      "id": "OT-028",
+      "citation": "derived from A-025",
+      "text": "hack/prepare.sh, examples/storeconfig and cluster/test/setup.sh are absent."
+    },
+    {
+      "id": "OT-029",
+      "citation": "derived from A-026",
+      "text": "MIGRATION.md lists all 45 resources with legacy and new group and kind."
+    },
+    {
+      "id": "OT-030",
+      "citation": "derived from A-025",
+      "text": "README.md documents install by fully qualified multi-arch tag, the credentials Secret keys, and a VM example."
+    },
+    {
+      "id": "OT-031",
+      "citation": "derived from A-024",
+      "text": "`go test ./internal/clients/...` runs the credential and cache unit tests."
+    }
+  ],
+  "source_inventory": [
+    {
+      "item": "vsphere_compute_cluster",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeCluster",
+        "new kind=ComputeCluster"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_host_group",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterHostGroup",
+        "new kind=ComputeClusterHostGroup"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_vm_affinity_rule",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterVmAffinityRule",
+        "new kind=ComputeClusterVmAffinityRule"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_vm_anti_affinity_rule",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterVmAntiAffinityRule",
+        "new kind=ComputeClusterVmAntiAffinityRule"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_vm_dependency_rule",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterVmDependencyRule",
+        "new kind=ComputeClusterVmDependencyRule"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_vm_group",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterVmGroup",
+        "new kind=ComputeClusterVmGroup"
+      ]
+    },
+    {
+      "item": "vsphere_compute_cluster_vm_host_rule",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereComputeClusterVmHostRule",
+        "new kind=ComputeClusterVmHostRule"
+      ]
+    },
+    {
+      "item": "vsphere_configuration_profile",
+      "status": "NEW-2.15",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=-",
+        "new kind=ConfigurationProfile"
+      ]
+    },
+    {
+      "item": "vsphere_content_library",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereContentLibrary",
+        "new kind=ContentLibrary"
+      ]
+    },
+    {
+      "item": "vsphere_content_library_item",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereContentLibraryItem",
+        "new kind=ContentLibraryItem"
+      ]
+    },
+    {
+      "item": "vsphere_custom_attribute",
+      "status": "PORT",
+      "details": [
+        "group=inventory",
+        "legacy kind=VSphereCustomAttribute",
+        "new kind=CustomAttribute"
+      ]
+    },
+    {
+      "item": "vsphere_datacenter",
+      "status": "PORT",
+      "details": [
+        "group=inventory",
+        "legacy kind=VSphereDatacenter",
+        "new kind=Datacenter"
+      ]
+    },
+    {
+      "item": "vsphere_datastore_cluster",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereDatastoreCluster",
+        "new kind=DatastoreCluster"
+      ]
+    },
+    {
+      "item": "vsphere_datastore_cluster_vm_anti_affinity_rule",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereDatastoreClusterVmAntiAffinityRule",
+        "new kind=DatastoreClusterVmAntiAffinityRule"
+      ]
+    },
+    {
+      "item": "vsphere_distributed_port_group",
+      "status": "PORT",
+      "details": [
+        "group=networking",
+        "legacy kind=VSphereDistributedPortGroup",
+        "new kind=DistributedPortGroup"
+      ]
+    },
+    {
+      "item": "vsphere_distributed_virtual_switch",
+      "status": "PORT",
+      "details": [
+        "group=networking",
+        "legacy kind=VSphereDistributedVirtualSwitch",
+        "new kind=DistributedVirtualSwitch"
+      ]
+    },
+    {
+      "item": "vsphere_distributed_virtual_switch_pvlan_mapping",
+      "status": "NEW-UNWIRED",
+      "details": [
+        "group=networking",
+        "legacy kind=-",
+        "new kind=DistributedVirtualSwitchPvlanMapping"
+      ]
+    },
+    {
+      "item": "vsphere_dpm_host_override",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereDpmHostOverride",
+        "new kind=DpmHostOverride"
+      ]
+    },
+    {
+      "item": "vsphere_drs_vm_override",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereDrsVmOverride",
+        "new kind=DrsVmOverride"
+      ]
+    },
+    {
+      "item": "vsphere_entity_permissions",
+      "status": "PORT",
+      "details": [
+        "group=security",
+        "legacy kind=VSphereEntityPermissions",
+        "new kind=EntityPermissions"
+      ]
+    },
+    {
+      "item": "vsphere_file",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereFile",
+        "new kind=File"
+      ]
+    },
+    {
+      "item": "vsphere_folder",
+      "status": "PORT",
+      "details": [
+        "group=inventory",
+        "legacy kind=VSphereFolder",
+        "new kind=Folder"
+      ]
+    },
+    {
+      "item": "vsphere_guest_os_customization",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereGuestOsCustomization",
+        "new kind=GuestOsCustomization"
+      ]
+    },
+    {
+      "item": "vsphere_ha_vm_override",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereHaVmOverride",
+        "new kind=HaVmOverride"
+      ]
+    },
+    {
+      "item": "vsphere_host",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereHost",
+        "new kind=Host"
+      ]
+    },
+    {
+      "item": "vsphere_host_port_group",
+      "status": "PORT",
+      "details": [
+        "group=networking",
+        "legacy kind=VSphereHostPortGroup",
+        "new kind=HostPortGroup"
+      ]
+    },
+    {
+      "item": "vsphere_host_virtual_switch",
+      "status": "PORT",
+      "details": [
+        "group=networking",
+        "legacy kind=VSphereHostVirtualSwitch",
+        "new kind=HostVirtualSwitch"
+      ]
+    },
+    {
+      "item": "vsphere_license",
+      "status": "PORT",
+      "details": [
+        "group=administration",
+        "legacy kind=VSphereLicense",
+        "new kind=License"
+      ]
+    },
+    {
+      "item": "vsphere_nas_datastore",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereNasDatastore",
+        "new kind=NasDatastore"
+      ]
+    },
+    {
+      "item": "vsphere_offline_software_depot",
+      "status": "PORT",
+      "details": [
+        "group=lifecycle",
+        "legacy kind=VSphereOfflineSoftwareDepot",
+        "new kind=OfflineSoftwareDepot"
+      ]
+    },
+    {
+      "item": "vsphere_resource_pool",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereResourcePool",
+        "new kind=ResourcePool"
+      ]
+    },
+    {
+      "item": "vsphere_role",
+      "status": "PORT",
+      "details": [
+        "group=security",
+        "legacy kind=VSphereRole",
+        "new kind=Role"
+      ]
+    },
+    {
+      "item": "vsphere_storage_drs_vm_override",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereStorageDrsVmOverride",
+        "new kind=StorageDrsVmOverride"
+      ]
+    },
+    {
+      "item": "vsphere_supervisor",
+      "status": "PORT",
+      "details": [
+        "group=workloadmanagement",
+        "legacy kind=VSphereSupervisor",
+        "new kind=Supervisor"
+      ]
+    },
+    {
+      "item": "vsphere_tag",
+      "status": "PORT",
+      "details": [
+        "group=inventory",
+        "legacy kind=VSphereTag",
+        "new kind=Tag"
+      ]
+    },
+    {
+      "item": "vsphere_tag_category",
+      "status": "PORT",
+      "details": [
+        "group=inventory",
+        "legacy kind=VSphereTagCategory",
+        "new kind=TagCategory"
+      ]
+    },
+    {
+      "item": "vsphere_vapp_container",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereVappContainer",
+        "new kind=VappContainer"
+      ]
+    },
+    {
+      "item": "vsphere_vapp_entity",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereVappEntity",
+        "new kind=VappEntity"
+      ]
+    },
+    {
+      "item": "vsphere_virtual_disk",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereVirtualDisk",
+        "new kind=VirtualDisk"
+      ]
+    },
+    {
+      "item": "vsphere_virtual_machine",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereVirtualMachine",
+        "new kind=VirtualMachine"
+      ]
+    },
+    {
+      "item": "vsphere_virtual_machine_class",
+      "status": "PORT",
+      "details": [
+        "group=workloadmanagement",
+        "legacy kind=VSphereVirtualMachineClass",
+        "new kind=VirtualMachineClass"
+      ]
+    },
+    {
+      "item": "vsphere_virtual_machine_snapshot",
+      "status": "PORT",
+      "details": [
+        "group=virtualmachine",
+        "legacy kind=VSphereVirtualMachineSnapshot",
+        "new kind=VirtualMachineSnapshot"
+      ]
+    },
+    {
+      "item": "vsphere_vm_storage_policy",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereVmStoragePolicy",
+        "new kind=VmStoragePolicy"
+      ]
+    },
+    {
+      "item": "vsphere_vmfs_datastore",
+      "status": "PORT",
+      "details": [
+        "group=storage",
+        "legacy kind=VSphereVmfsDatastore",
+        "new kind=VmfsDatastore"
+      ]
+    },
+    {
+      "item": "vsphere_vnic",
+      "status": "PORT",
+      "details": [
+        "group=hostandclustermanagement",
+        "legacy kind=VSphereVnic",
+        "new kind=Vnic"
+      ]
+    },
+    {
+      "item": "(hand-written) apis/v1beta1 ProviderConfig",
+      "status": "PORT",
+      "details": [
+        "becomes cluster ProviderConfig plus namespaced ProviderConfig plus ClusterProviderConfig"
+      ]
+    },
+    {
+      "item": "(hand-written) apis/v1beta1 ProviderConfigUsage",
+      "status": "PORT",
+      "details": [
+        "becomes cluster and namespaced usages, including ClusterProviderConfigUsage"
+      ]
+    },
+    {
+      "item": "(hand-written) apis/v1alpha1 StoreConfig",
+      "status": "DELETE",
+      "details": [
+        "ESS removed in Crossplane v2"
+      ]
+    }
+  ],
+  "destination_naming_rule": "Each Terraform resource `vsphere_X` keeps its current short group and is generated twice: `SHORTGROUP.vsphere.alphabravo.io` (cluster-scoped) and `SHORTGROUP.vsphere.m.alphabravo.io` (namespaced), both at version v1alpha1. Kind = legacy Kind with only the leading `VSphere` prefix stripped, remaining casing unchanged. New resources: `vsphere_distributed_virtual_switch_pvlan_mapping` becomes networking/DistributedVirtualSwitchPvlanMapping; `vsphere_configuration_profile` becomes hostandclustermanagement/ConfigurationProfile. Provider config types live in `vsphere.alphabravo.io` (cluster) and `vsphere.m.alphabravo.io` (namespaced). Config source: one shared configurator package per resource family under `config/`, applied to both providers. [derived from A-008, A-009, A-010, A-011, A-027]",
+  "done_gates": [
+    "Build/generate/lint clean",
+    "Lab e2e on k3s",
+    "Published v2.15.1"
+  ],
+  "key_facts": {
+    "upjet": "github.com/crossplane/upjet/v2 v2.5.0",
+    "go": "1.26.8",
+    "vsphere_module": "github.com/vmware/terraform-provider-vsphere v1.26.1-0.20260319130334-b2eabd5702e1 (= tag v2.15.1)",
+    "build_time_terraform": "1.5.7 (MPL), guarded <1.6",
+    "api_root": "vsphere.alphabravo.io / vsphere.m.alphabravo.io",
+    "crossplane_validate": [
+      "v2.2.0",
+      "v2.4.2"
+    ]
+  }
+}
