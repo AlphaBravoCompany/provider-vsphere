@@ -1,0 +1,45 @@
+apiVersion: storage.vsphere.alphabravo.io/v1alpha1
+kind: DatastoreClusterVmAntiAffinityRule
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/datastoreclustervmantiaffinityrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_anti_affinity_rule
+  name: cluster-vm-anti-affinity-rule
+spec:
+  forProvider:
+    datastoreClusterId: ${data.vsphere_datastore_cluster.datastore_cluster.id}
+    name: terraform-test-datastore-cluster-vm-anti-affinity-rule
+    virtualMachineIds:
+    - ${vsphere_virtual_machine.vm.*.id}
+
+---
+
+apiVersion: virtualmachine.vsphere.alphabravo.io/v1alpha1
+kind: VirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/datastoreclustervmantiaffinityrule
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    count: 2
+    datastoreClusterIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore_cluster
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 2048
+    name: terraform-test-${count.index}
+    networkInterface:
+    - networkIdSelector:
+        matchLabels:
+          testing.upbound.io/example-name: vsphere_network
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster

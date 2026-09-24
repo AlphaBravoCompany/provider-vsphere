@@ -1,0 +1,43 @@
+apiVersion: storage.vsphere.alphabravo.io/v1alpha1
+kind: StorageDrsVmOverride
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/storagedrsvmoverride
+  labels:
+    testing.upbound.io/example-name: drs_vm_override
+  name: drs-vm-override
+spec:
+  forProvider:
+    datastoreClusterId: ${data.vsphere_datastore_cluster.datastore_cluster.id}
+    sdrsEnabled: false
+    virtualMachineId: ${vsphere_virtual_machine.vm.id}
+
+---
+
+apiVersion: virtualmachine.vsphere.alphabravo.io/v1alpha1
+kind: VirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/storagedrsvmoverride
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 1024
+    name: terraform-test
+    networkInterface:
+    - networkIdSelector:
+        matchLabels:
+          testing.upbound.io/example-name: vsphere_network
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_resource_pool
