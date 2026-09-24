@@ -295,7 +295,7 @@
         {
           "id": "FR-104",
           "citation": "derived from A-012",
-          "text": "Implement references with `config.Reference{TerraformName: ...}` in the shared VM configurator: datacenter_id to vsphere_datacenter; resource_pool_id to vsphere_resource_pool; datastore_id to vsphere_vmfs_datastore and vsphere_nas_datastore; datastore_cluster_id to vsphere_datastore_cluster; host_system_id to vsphere_host; folder to vsphere_folder using its path; network_interface.network_id to vsphere_distributed_port_group; storage_policy_id to vsphere_vm_storage_policy. Fix the VirtualDisk datacenter and datastore references with correct extractors."
+          "text": "Implement references with `config.Reference{TerraformName: ...}` in the shared VM configurator: datacenter_id to vsphere_datacenter; resource_pool_id to vsphere_resource_pool; datastore_id to vsphere_vmfs_datastore (NAS datastores via a literal datastoreId); datastore_cluster_id to vsphere_datastore_cluster; host_system_id to vsphere_host; folder to vsphere_folder using its path; network_interface.network_id to vsphere_distributed_port_group; storage_policy_id to vsphere_vm_storage_policy. Fix the VirtualDisk datacenter and datastore references with correct extractors."
         },
         {
           "id": "FR-105",
@@ -507,7 +507,7 @@
     {
       "id": "AC-016",
       "citation": "derived from A-012",
-      "text": "`datastoreIdRef` resolves when it points at either a VmfsDatastore or a NasDatastore (edge case)."
+      "text": "`datastoreIdRef` resolves when it points at a VmfsDatastore; a NasDatastore is used by setting a literal `datastoreId`, because an upjet reference field targets one kind (edge case)."
     },
     {
       "id": "AC-017",
@@ -522,7 +522,7 @@
     {
       "id": "AC-019",
       "citation": "derived from A-013",
-      "text": "A VM powered off out of band stays powered off after the next reconcile when only an unrelated field such as `annotation` is changed (error case)."
+      "text": "A VM powered off out of band stays powered off after the next reconcile when an unrelated field such as `annotation` is changed out of band; a change made in the MR spec may power the VM on, as vSphere provider 2.15.1 does after any reconfigure (error case)."
     },
     {
       "id": "AC-020",
@@ -664,7 +664,7 @@
     {
       "id": "OT-019",
       "citation": "derived from A-013",
-      "text": "An out-of-band powered-off VM is not powered on by an unrelated field change."
+      "text": "An out-of-band powered-off VM is not powered on by an unrelated out-of-band field change."
     },
     {
       "id": "OT-020",
