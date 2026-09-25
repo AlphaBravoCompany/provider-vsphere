@@ -494,7 +494,7 @@ This is a Kubernetes API, not HTTP; the surfaces are CRDs and make targets. [der
 ### Domain: virtualmachine-behavior
 - **OT-017** [derived from A-021, A-022]: Cluster and namespaced VirtualMachine MRs with Pioneer's field profile reach Ready and Synced on Crossplane v2.2.0 and v2.4.2.
 - **OT-018** [derived from A-013]: A Ready VM shows no repeated update operations for three poll intervals.
-- **OT-019** [derived from A-013, A-035, A-036]: An out-of-band powered-off VM is not powered on by an out-of-band change to a field Crossplane does not manage (not set in forProvider and without a Terraform schema default, such as annotation); drift on defaulted fields is corrected and may power the VM on, which is documented.
+- **OT-019** [derived from A-013, A-035, A-036]: An out-of-band powered-off VM is not powered on by an out-of-band change to a field Crossplane does not manage (an optional, provider-computed, late-init-ignored field not set in forProvider, such as annotation); drift on other fields, including unset fields enforced as their schema default or zero value, is corrected and may power the VM on, which is documented.
 - **OT-020** [derived from A-012]: resourcePoolIdRef to a ResourcePool resolves to the pool ID.
 - **OT-021** [derived from A-021]: Deleting each VM MR removes the VM from vCenter.
 

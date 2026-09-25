@@ -664,7 +664,7 @@
     {
       "id": "OT-019",
       "citation": "derived from A-013",
-      "text": "An out-of-band powered-off VM is not powered on by an out-of-band change to a field Crossplane does not manage (not set in forProvider and without a Terraform schema default, such as annotation); drift on defaulted fields is corrected and may power the VM on, which is documented."
+      "text": "An out-of-band powered-off VM is not powered on by an out-of-band change to a field Crossplane does not manage (an optional, provider-computed, late-init-ignored field not set in forProvider, such as annotation); drift on other fields, including unset fields enforced as their schema default or zero value, is corrected and may power the VM on, which is documented."
     },
     {
       "id": "OT-020",
