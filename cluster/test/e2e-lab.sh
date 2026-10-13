@@ -21,7 +21,10 @@
 #      forProvider, such as annotation, is not reverted), and DEFAULTED-DRIFT-CORRECTED
 #      (A-036/OT-019: an out-of-band change to an unset field that the provider enforces as its
 #      schema default or zero value, such as cpu_reservation, is corrected, which may power a
-#      powered-off VM back on with vSphere provider 2.15.1);
+#      powered-off VM back on with vSphere provider 2.15.1). Right after AC-019, while the first
+#      two VMs are powered off out of band, CUSTOM-ATTR-POWER (ankasoft #6) gives them a value of
+#      a custom attribute this run creates (a cluster-scoped CustomAttribute), changes that value
+#      out of band, and requires it to be reverted with each VM still powered off;
 #   6. AC-022 password rotation, when E2E_VSPHERE_ROTATED_PASSWORD is set: the run records the
 #      provider-user session keys, pauses on /dev/tty for you to change the vCenter password,
 #      then logs govc in with the rotated password only (vCenter rejects the original from then
@@ -96,6 +99,8 @@ readonly LOCK_NAME=lock
 readonly VM_RES_CLUSTER=virtualmachines.virtualmachine.vsphere.alphabravo.io
 readonly VM_RES_NS=virtualmachines.virtualmachine.vsphere.m.alphabravo.io
 readonly VMFS_RES_CLUSTER=vmfsdatastores.storage.vsphere.alphabravo.io
+# CUSTOM-ATTR-POWER: the cluster-scoped CustomAttribute (vsphere_custom_attribute) this run creates.
+readonly CA_RES_CLUSTER=customattributes.inventory.vsphere.alphabravo.io
 readonly PC_RES_CLUSTER=providerconfigs.vsphere.alphabravo.io
 readonly PC_RES_NS=providerconfigs.vsphere.m.alphabravo.io
 readonly CPC_RES=clusterproviderconfigs.vsphere.m.alphabravo.io
@@ -145,7 +150,7 @@ readonly LATEINIT_POLICIES='["Observe", "Create", "Update", "Delete"]'
 # non-zero so the correction back to 0 is observable.
 readonly INITLATE_CPU_RESERVATION_OOB=500
 readonly ROWS=(AC-005 AC-006-update AC-006-delete/OT-021 AC-007 AC-008 AC-016 AC-018 AC-019 AC-021
-  AC-022 INITPROVIDER LATEINIT-DISABLED DEFAULTED-DRIFT-CORRECTED "SafeStart(info)")
+  AC-022 INITPROVIDER LATEINIT-DISABLED DEFAULTED-DRIFT-CORRECTED CUSTOM-ATTR-POWER "SafeStart(info)")
 readonly COLS=(cluster namespaced package)
 readonly REQUIRED_VM_ENV=(VSPHERE_USER VSPHERE_PASSWORD VSPHERE_SERVER E2E_RESOURCE_POOL_ID
   E2E_DATASTORE_ID E2E_NETWORK_ID E2E_TEMPLATE_UUID E2E_GUEST_ID E2E_FOLDER)
@@ -219,11 +224,16 @@ DS_TYPE="" VMFS_DS_ID="" POLL_SECONDS=60 GOVC_INSECURE_VALUE=1
 #   VMS_APPLIED          the VirtualMachine MRs: run_vm_setup_checks, cleanup. AC-006 and AC-007
 #                        delete some of them, but no vm-phase step deletes the INITPROVIDER/LATEINIT
 #                        VM, so only cleanup clears it.
+#   CA_APPLIED           the CustomAttribute MR CA_NAME and the vCenter custom attribute it
+#                        creates: run_custom_attr_power, cleanup. Cleanup deletes it after the VMs
+#                        (they carry its value) and while the provider still runs (its finalizer
+#                        removes the attribute from vCenter).
 # GATE_TEARDOWN: the version gate's removal of its own Provider and Crossplane, which runs even
 # with --skip-cleanup: "" (not reached), started, or finished.
 # LEGACY_WEBHOOK_LEFT: uninstalling this run's Crossplane also leaves the webhook configuration
 # crossplane, which only a Crossplane 1.x creates (helm_install_crossplane, crossplane_remainder).
-VMFS_APPLIED=false VMS_APPLIED=false CP_INSTALLED_NAME="" GATE_TEARDOWN="" LEGACY_WEBHOOK_LEFT=false
+VMFS_APPLIED=false VMS_APPLIED=false CA_APPLIED=false CP_INSTALLED_NAME="" GATE_TEARDOWN=""
+LEGACY_WEBHOOK_LEFT=false
 # AC-022 (US-006, password rotation). ROTATED_PASSWORD comes from E2E_VSPHERE_ROTATED_PASSWORD
 # (resolve_settings); it is empty, and AC-022 is SKIPPED, unless that is set (a dry run then
 # only plans AC-022).
@@ -261,6 +271,11 @@ SESSION_USER_MATCH=account
 PRE_ROTATION_SESSION_KEYS='[]'
 # INITPROVIDER/LATEINIT-DISABLED VM (ankasoft #5, #7): annotation values, set from RUN_ID in main().
 INITLATE_NAME="" INITLATE_ANNOTATION="" INITLATE_OOB=""
+# CUSTOM-ATTR-POWER (ankasoft #6), set from RUN_ID in main(): CA_NAME names both the CustomAttribute
+# MR and the vCenter custom attribute it creates; CA_VALUE is the value the VMs' spec sets and
+# CA_OOB the one govc sets out of band. CA_ID is the attribute's key, read from the MR's
+# status.atProvider.id (ca_ready): customAttributes maps keys, not names, to values.
+CA_NAME="" CA_VALUE="" CA_OOB="" CA_ID=""
 declare -A RESULT=()
 ALIVE=()
 LEFT_IN_PLACE=()
@@ -310,6 +325,9 @@ Options:
 Required environment for the vm phase:
   VSPHERE_USER VSPHERE_PASSWORD VSPHERE_SERVER
   E2E_RESOURCE_POOL_ID E2E_DATASTORE_ID E2E_NETWORK_ID E2E_TEMPLATE_UUID E2E_GUEST_ID E2E_FOLDER
+  VSPHERE_USER also needs, on the vCenter root object, Sessions.TerminateSession (AC-021,
+  AC-022) and Global.ManageCustomFields and Global.SetCustomField (CUSTOM-ATTR-POWER creates,
+  sets and deletes a custom attribute); see RELEASING.md section 2.
 Optional environment:
   VSPHERE_ALLOW_UNVERIFIED_SSL (default true)   E2E_FIRMWARE (bios|efi, default bios)
   E2E_HOST_SYSTEM_ID (pins the host)            E2E_DISK_GB (default 40)
@@ -882,6 +900,7 @@ print_plan() {
     say "  placement        : resourcePoolId=$E2E_RESOURCE_POOL_ID datastoreId=$E2E_DATASTORE_ID networkId=$E2E_NETWORK_ID folder=$E2E_FOLDER"
     say "  clone            : templateUuid=$E2E_TEMPLATE_UUID guestId=$E2E_GUEST_ID firmware=$FIRMWARE hostSystemId=${E2E_HOST_SYSTEM_ID:-(vSphere places the VM)} disk=${E2E_DISK_GB:-40}GB"
     say "  VMs              : $VM_NAME_CLUSTER (cluster-scoped), $NS/$VM_NAME_NS (namespaced), $NS/$INITLATE_NAME (namespaced, INITPROVIDER/LATEINIT-DISABLED ankasoft #5 #7, DEFAULTED-DRIFT-CORRECTED A-036/OT-019)"
+    say "  custom attribute : CustomAttribute $CA_NAME (cluster-scoped, vCenter custom attribute $CA_NAME for VirtualMachine; CUSTOM-ATTR-POWER ankasoft #6); needs Global.ManageCustomFields and Global.SetCustomField"
     if [[ -n $ROTATED_PASSWORD ]]; then
       say "  rotation (AC-022): record the provider's session keys, pause on /dev/tty (up to ${ROTATION_CONFIRM_TIMEOUT}s) for you to change the vCenter password, log govc in with the rotated password from then on, rotate the credentials Secrets, then wait out E2E_LOGOUT_DELAY=$LOGOUT_DELAY_RAW + E2E_LOGOUT_SLACK=$LOGOUT_SLACK_RAW (measured on this workstation's clock from when a post-rotation session key is first seen, not from the rotation itself) for the old client's delayed logout"
     else
@@ -917,6 +936,7 @@ print_plan() {
       say "  $((n += 1)). [AC-022] SKIPPED(E2E_VSPHERE_ROTATED_PASSWORD not set)"
     fi
     say "  $((n += 1)). [AC-019] annotation removed from the MR spec; VM powered off and annotation changed out of band with govc; still poweredOff after the next reconcile"
+    say "  $((n += 1)). [CUSTOM-ATTR-POWER] (ankasoft #6) create CustomAttribute $CA_NAME and wait until it is Ready with its key; on each VM, powered off out of band (govc powers it off if AC-019 left it on), set spec.forProvider.customAttributes {<key>: $CA_VALUE} and wait until vCenter shows that value with the VM still poweredOff; change the value to $CA_OOB out of band with govc fields.set; after the next reconcile the value must be back to $CA_VALUE AND the VM still poweredOff (vSphere provider 2.15.1 corrects custom attribute drift with a custom attribute call, without the reconfigure that powers a VM on)"
     say "  $((n += 1)). [AC-006] update numCpus 2->4 and memory 4096->6144 in place (same external-name and instance UUID)"
     say "  $((n += 1)). [AC-006] delete each MR / OT-021: the VM is gone from vCenter"
     if [[ -n $ROTATED_PASSWORD ]]; then
@@ -936,7 +956,7 @@ init_results() {
   for r in "${ROWS[@]}"; do
     for c in "${COLS[@]}"; do RESULT["$r|$c"]="SKIPPED(n/a)"; done
   done
-  for r in AC-005 AC-006-update AC-006-delete/OT-021 AC-016 AC-018 AC-019 AC-022; do
+  for r in AC-005 AC-006-update AC-006-delete/OT-021 AC-016 AC-018 AC-019 AC-022 CUSTOM-ATTR-POWER; do
     RESULT["$r|cluster"]="SKIPPED(not run)"
     RESULT["$r|namespaced"]="SKIPPED(not run)"
   done
@@ -1820,7 +1840,7 @@ run_ac005() {
     else
       record AC-005 "$s" FAIL
       diag_vm "$s"
-      for r in AC-006-update AC-006-delete/OT-021 AC-018 AC-019 AC-022; do record "$r" "$s" "SKIPPED(AC-005 failed)"; done
+      for r in AC-006-update AC-006-delete/OT-021 AC-018 AC-019 AC-022 CUSTOM-ATTR-POWER; do record "$r" "$s" "SKIPPED(AC-005 failed)"; done
     fi
   done
   # AC-016 namespaced: the literal datastoreId path, which is how an NFS datastore is used.
@@ -2215,6 +2235,160 @@ run_ac019() {
   done
 }
 
+# ca_ready: the CustomAttribute CA_NAME is Ready and its status.atProvider.id, the vCenter key of
+# the custom attribute it created, is set. It sets CA_ID to that key; a dry run, to a placeholder.
+ca_ready() {
+  local json id
+  json=$(k get "$CA_RES_CLUSTER/$CA_NAME" -o json) || return 1
+  if is_dry; then
+    CA_ID="<key of $CA_NAME>"
+    return 0
+  fi
+  id=$(jq -r 'if any(.status.conditions[]?; .type == "Ready" and .status == "True")
+    then .status.atProvider.id // "" else "" end' <<<"$json") || return 1
+  [[ $id =~ ^[0-9]+$ ]] || return 1
+  CA_ID=$id
+}
+# ca_value PATH: the VM's value of the custom attribute CA_ID, or nothing when it has none. govc
+# vm.info -json lists a VM's values under customValue as {key, value}, and gives null for none.
+ca_value() {
+  local json
+  json=$(vm_info "$1") || return 1
+  if is_dry; then return 0; fi
+  jq -r --arg k "$CA_ID" \
+    '[.virtualMachines[0].customValue[]? | select((.key | tostring) == $k) | .value][0] // ""' <<<"$json"
+}
+# ca_value_is PATH WANT: the VM's value of the custom attribute CA_ID is WANT.
+ca_value_is() {
+  local got
+  got=$(ca_value "$1") || return 1
+  if is_dry; then return 0; fi
+  [[ $got == "$2" ]]
+}
+
+# run_custom_attr_power: CUSTOM-ATTR-POWER (ankasoft #6) on the cluster-scoped and the namespaced
+# VM, right after run_ac019 left them powered off out of band. ankasoft #6 reports that a custom
+# attribute changed in vCenter on a powered-off VM was reverted and the VM powered back on. With
+# vSphere provider 2.15.1, an Update that only changes custom_attributes sets them through the
+# CustomFieldsManager (the customattribute helper's DiffProcessor, CustomFieldsManager.SetField)
+# before it builds the VM config spec, which holds no custom attributes. That spec then equals
+# the VM's, so the reconfigure, and the power-on that follows it, do not run
+# (resourceVSphereVirtualMachineUpdate in vsphere/resource_vsphere_virtual_machine.go). So the
+# attribute must be reverted and the VM must stay powered off. The run creates its own cluster-
+# scoped CustomAttribute for VirtualMachine (CA_APPLIED) and sets it in each VM's
+# spec.forProvider.customAttributes, keyed by its key from status.atProvider.id; applying that
+# must not power the VM on either. Then govc changes the value out of band, and after one poll
+# interval a PASS needs the value back to CA_VALUE and the VM still poweredOff. A VM that AC-019
+# could not keep off is powered off here first, and its FAIL message points at AC-019, since
+# other drift on it may be what powered it on. VSPHERE_USER needs Global.ManageCustomFields (the
+# provider creates and deletes the attribute) and Global.SetCustomField (the provider and govc
+# set its value); each failure message names the one it needs.
+run_custom_attr_power() {
+  local s path state got patch
+  local -A vmpath=()
+  say "== [CUSTOM-ATTR-POWER] (ankasoft #6) custom attribute drift on a VM powered off out of band: reverted, VM still off"
+  say "[CUSTOM-ATTR-POWER] CustomAttribute $CA_NAME for VirtualMachine"
+  CA_APPLIED=true
+  if ! apply_manifest "$(
+    cat <<EOF
+apiVersion: inventory.vsphere.alphabravo.io/v1alpha1
+kind: CustomAttribute
+metadata:
+  name: $CA_NAME
+  labels:
+    $RUN_LABEL_KEY: "$RUN_ID"
+spec:
+  forProvider:
+    name: $CA_NAME
+    managedObjectType: VirtualMachine
+  providerConfigRef:
+    name: default
+EOF
+  )"; then
+    for s in "${ALIVE[@]}"; do record CUSTOM-ATTR-POWER "$s" FAIL; done
+    return 0
+  fi
+  if ! poll_until 300 10 "CustomAttribute $CA_NAME is Ready with its key in status.atProvider.id" ca_ready; then
+    for s in "${ALIVE[@]}"; do record CUSTOM-ATTR-POWER "$s" FAIL; done
+    k get "$CA_RES_CLUSTER/$CA_NAME" -o 'jsonpath={range .status.conditions[*]}{.type}={.status} {.reason}: {.message}{"\n"}{end}' >&2 || true
+    say "[CUSTOM-ATTR-POWER] CustomAttribute $CA_NAME is not Ready with a key (its conditions are above). If a message says the permission was denied (NoPermission), VSPHERE_USER lacks Global.ManageCustomFields ('Global > Manage custom attributes') on the vCenter root object: see RELEASING.md section 2"
+    return 0
+  fi
+  say "[CUSTOM-ATTR-POWER] custom attribute $CA_NAME has key $CA_ID"
+  # CA_ID is digits (ca_ready) and CA_VALUE is e2e-ca-spec-RUN_ID, so neither needs JSON escaping.
+  printf -v patch '{"spec":{"forProvider":{"customAttributes":{"%s":"%s"}}}}' "$CA_ID" "$CA_VALUE"
+  for s in "${ALIVE[@]}"; do
+    vmref "$s"
+    path=$(vm_path "$VM_NAME") || path=""
+    if [[ -z $path ]]; then
+      record CUSTOM-ATTR-POWER "$s" FAIL
+      continue
+    fi
+    state=$(power_state "$path") || state=unknown
+    if is_dry; then
+      say "  (a real run powers $VM_NAME off with govc only when it is not already poweredOff, as AC-019 leaves it)"
+    elif [[ $state != poweredOff ]]; then
+      say "[CUSTOM-ATTR-POWER][$s] $VM_NAME is $state, not poweredOff as AC-019 leaves it; power it off with govc: $path"
+    fi
+    if is_dry || [[ $state != poweredOff ]]; then
+      if ! g vm.power -off -force "$path"; then
+        record CUSTOM-ATTR-POWER "$s" FAIL
+        continue
+      fi
+    fi
+    say "[CUSTOM-ATTR-POWER][$s] set spec.forProvider.customAttributes {$CA_ID: $CA_VALUE}"
+    if ! k patch "${REF[@]}" --type=merge -p "$patch"; then
+      record CUSTOM-ATTR-POWER "$s" FAIL
+      continue
+    fi
+    if ! poll_until 300 10 "vCenter shows $CA_NAME=$CA_VALUE on $VM_NAME" ca_value_is "$path" "$CA_VALUE"; then
+      record CUSTOM-ATTR-POWER "$s" FAIL
+      diag_vm "$s"
+      say "[CUSTOM-ATTR-POWER][$s] the provider did not set $CA_NAME=$CA_VALUE on $VM_NAME (the MR's conditions are above). If a message says the permission was denied (NoPermission), VSPHERE_USER lacks Global.SetCustomField ('Global > Set custom attribute'): see RELEASING.md section 2"
+      continue
+    fi
+    state=$(power_state "$path") || state=unknown
+    if [[ $state != poweredOff ]]; then
+      say "[CUSTOM-ATTR-POWER][$s] applying customAttributes from the spec left $VM_NAME $state, not poweredOff"
+      record CUSTOM-ATTR-POWER "$s" FAIL
+      continue
+    fi
+    say "[CUSTOM-ATTR-POWER][$s] change $CA_NAME to $CA_OOB out of band with govc: $path"
+    if ! g fields.set "$CA_NAME" "$CA_OOB" "$path"; then
+      say "[CUSTOM-ATTR-POWER][$s] govc fields.set failed (its error is above). If it says the permission was denied (NoPermission), VSPHERE_USER lacks Global.SetCustomField ('Global > Set custom attribute'): see RELEASING.md section 2"
+      record CUSTOM-ATTR-POWER "$s" FAIL
+      continue
+    fi
+    vmpath[$s]=$path
+  done
+  ((${#vmpath[@]})) || return 0
+  sleep_poll
+  for s in "${ALIVE[@]}"; do
+    [[ -n ${vmpath[$s]:-} ]] || continue
+    vmref "$s"
+    got=$(ca_value "${vmpath[$s]}") || got="(govc failed)"
+    state=$(power_state "${vmpath[$s]}") || state=unknown
+    if is_dry; then
+      say "  (a real run then requires $CA_NAME back to $CA_VALUE on $VM_NAME, and $VM_NAME still poweredOff)"
+      record CUSTOM-ATTR-POWER "$s" PASS
+      continue
+    fi
+    say "[CUSTOM-ATTR-POWER][$s] after the next reconcile: $CA_NAME=$got (spec $CA_VALUE, set out of band to $CA_OOB); power state $state"
+    if [[ $got == "$CA_VALUE" && $state == poweredOff ]]; then
+      record CUSTOM-ATTR-POWER "$s" PASS
+      continue
+    fi
+    record CUSTOM-ATTR-POWER "$s" FAIL
+    if [[ $got != "$CA_VALUE" ]]; then
+      say "[CUSTOM-ATTR-POWER][$s] the out-of-band value was not reverted to the spec value within one poll interval ($POLL_INTERVAL)"
+      diag_vm "$s"
+    fi
+    if [[ $state != poweredOff ]]; then
+      say "[CUSTOM-ATTR-POWER][$s] $VM_NAME was powered on: correcting the drift ran a reconfigure (ankasoft #6), or other drift on this VM did; if AC-019 also failed for it, start there"
+    fi
+  done
+}
+
 hw_updated() {
   local json info
   vmref "$1"
@@ -2305,7 +2479,8 @@ phase_vm() {
     fatal "Provider $PROVIDER_NAME did not become Installed and Healthy within 10m"
   fi
   k wait --for=condition=Established "crd/$VM_RES_CLUSTER" "crd/$VM_RES_NS" "crd/$VMFS_RES_CLUSTER" \
-    "crd/$PC_RES_CLUSTER" "crd/$PC_RES_NS" "crd/$CPC_RES" --timeout=5m || fatal "provider CRDs are not established"
+    "crd/$CA_RES_CLUSTER" "crd/$PC_RES_CLUSTER" "crd/$PC_RES_NS" "crd/$CPC_RES" --timeout=5m ||
+    fatal "provider CRDs are not established"
   safestart_info
   setup_configs
   setup_vmfs_ref
@@ -2316,6 +2491,7 @@ phase_vm() {
   run_steady_state
   run_ac022_rotation_start
   run_ac019
+  run_custom_attr_power
   run_ac006_update
   run_ac006_delete
   run_ac022_rotation_finish
@@ -2333,21 +2509,35 @@ labelled_vms_gone() {
 
 # print_manual_cleanup lists, in cleanup's order, what a human deletes by hand, and only what the
 # state flags say this run created and has not removed: the VirtualMachine deletes while
-# VMS_APPLIED (the provider must still run while they go), the VmfsDatastore while VMFS_APPLIED,
+# VMS_APPLIED, then the CustomAttribute delete while CA_APPLIED (the provider must still run while
+# they go: its finalizers remove the VMs and the custom attribute from vCenter; the VMs go first
+# because they carry the attribute's value), the VmfsDatastore while VMFS_APPLIED,
 # the ProviderConfig, namespace and Secret deletes while NS_CREATED, then the Provider's removal
 # and the Crossplane uninstall as print_removal_steps gives them. Those are the same steps as the
 # recovery print_provider_removal_diag prints: wait for Crossplane to finish removing the provider
 # before any helm uninstall. A dry run created nothing, so its heading says whose cleanup it is.
 print_manual_cleanup() {
-  local sel="$RUN_LABEL_KEY=$RUN_ID" kc n=0 head="Manual cleanup" types
+  local sel="$RUN_LABEL_KEY=$RUN_ID" kc n=0 head="Manual cleanup" types running=""
   kc="kubectl --context $KUBE_CONTEXT"
   if is_dry; then head="Manual cleanup a real run that ends here needs"; fi
-  if [[ $VMS_APPLIED == true ]]; then
-    say "$head, on this dedicated lab cluster only, in this order (the provider must still run while VMs are deleted):"
-    say "  $((n += 1)). $kc delete $VM_RES_CLUSTER -l $sel"
-    say "  $((n += 1)). $kc -n $NS delete $VM_RES_NS -l $sel"
+  if [[ $VMS_APPLIED == true && $CA_APPLIED == true ]]; then
+    running="VMs and the CustomAttribute are"
+  elif [[ $VMS_APPLIED == true ]]; then
+    running="VMs are"
+  elif [[ $CA_APPLIED == true ]]; then
+    running="the CustomAttribute is"
+  fi
+  if [[ -n $running ]]; then
+    say "$head, on this dedicated lab cluster only, in this order (the provider must still run while $running deleted):"
   else
     say "$head, on this dedicated lab cluster only, in this order:"
+  fi
+  if [[ $VMS_APPLIED == true ]]; then
+    say "  $((n += 1)). $kc delete $VM_RES_CLUSTER -l $sel"
+    say "  $((n += 1)). $kc -n $NS delete $VM_RES_NS -l $sel"
+  fi
+  if [[ $CA_APPLIED == true ]]; then
+    say "  $((n += 1)). $kc delete $CA_RES_CLUSTER -l $sel"
   fi
   if [[ $NS_CREATED == true ]]; then
     types="$PC_RES_CLUSTER,$CPC_RES"
@@ -2367,6 +2557,9 @@ collect_left() {
   LEFT_IN_PLACE=()
   if [[ $VMS_APPLIED == true ]]; then
     LEFT_IN_PLACE+=("any VirtualMachine MR labelled $sel still present, with its vCenter VM")
+  fi
+  if [[ $CA_APPLIED == true ]]; then
+    LEFT_IN_PLACE+=("the CustomAttribute $CA_NAME, with the vCenter custom attribute $CA_NAME it created")
   fi
   if [[ $VMFS_APPLIED == true ]]; then
     LEFT_IN_PLACE+=("the Observe-only VmfsDatastore $VMFS_MR_NAME (it does not change the vCenter datastore)")
@@ -2451,9 +2644,11 @@ print_left_in_place() {
 
 # cleanup deletes only objects labelled with this run's label (or by exact name for the AC-007
 # copy), and uninstalls Crossplane only when this run installed it. It is idempotent and keeps
-# the provider running until every VM MR is gone.
+# the provider running until every VM MR, and then the CustomAttribute, is gone: the VMs first,
+# since they carry the attribute's value. It then checks vCenter for a VM, or the custom
+# attribute, left behind.
 cleanup() {
-  local sel="$RUN_LABEL_KEY=$RUN_ID" name path configs_left=false
+  local sel="$RUN_LABEL_KEY=$RUN_ID" name path configs_left=false ca_check=$CA_APPLIED fields
   [[ $CLEANUP_STARTED == false ]] || return 0
   CLEANUP_STARTED=true
   say ""
@@ -2469,6 +2664,14 @@ cleanup() {
       return 1
     fi
     VMS_APPLIED=false
+    if [[ $CA_APPLIED == true ]]; then
+      if ! del "$CA_RES_CLUSTER" -l "$sel" --ignore-not-found --timeout=5m; then
+        warn "the CustomAttribute $CA_NAME is still present; the provider and Crossplane are left running so it can finish"
+        print_manual_cleanup
+        return 1
+      fi
+      CA_APPLIED=false
+    fi
   fi
   if phase_has_vm && [[ -n ${VM_NAME_CLUSTER:-} && $CLUSTER_TOUCHED == true ]] && ! is_dry; then
     # A govc failure (for example a login vCenter rejects) shows nothing about leaks, so it is
@@ -2482,6 +2685,16 @@ cleanup() {
         warn "LEAKED VM in vCenter: $path (delete it by hand)"
       fi
     done
+    # govc fields.ls prints one line per custom attribute: key, name, managed object type.
+    if [[ $ca_check == true ]]; then
+      if ! fields=$(g fields.ls); then
+        CLEANUP_OK=false
+        warn "cannot check vCenter for a leaked custom attribute $CA_NAME: govc failed (its error is above); check by hand"
+      elif awk -v n="$CA_NAME" '$2 == n { found = 1 } END { exit !found }' <<<"$fields"; then
+        CLEANUP_OK=false
+        warn "LEAKED custom attribute in vCenter: $CA_NAME (remove it by hand, for example: govc fields.rm $CA_NAME)"
+      fi
+    fi
   fi
   if del "$VMFS_RES_CLUSTER" -l "$sel" --ignore-not-found --timeout=2m; then VMFS_APPLIED=false; fi
   del "$PC_RES_CLUSTER" -l "$sel" --ignore-not-found --timeout=2m || configs_left=true
@@ -2572,6 +2785,9 @@ main() {
   INITLATE_NAME="e2e-$RUN_ID-initlate"
   INITLATE_ANNOTATION="e2e-init-$RUN_ID"
   INITLATE_OOB="e2e-lateinit-oob-$RUN_ID"
+  CA_NAME="e2e-$RUN_ID-attr"
+  CA_VALUE="e2e-ca-spec-$RUN_ID"
+  CA_OOB="e2e-ca-oob-$RUN_ID"
   print_plan
   init_results
   trap on_exit EXIT
@@ -2591,7 +2807,7 @@ main() {
   if phase_has_vm; then
     phase_vm
   else
-    for r in AC-005 AC-006-update AC-006-delete/OT-021 AC-016 AC-018 AC-019 AC-022; do
+    for r in AC-005 AC-006-update AC-006-delete/OT-021 AC-016 AC-018 AC-019 AC-022 CUSTOM-ATTR-POWER; do
       record "$r" cluster "SKIPPED(phase=$PHASE)"
       record "$r" namespaced "SKIPPED(phase=$PHASE)"
     done

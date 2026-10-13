@@ -36,7 +36,11 @@
 # on_exit; and --help against what on_exit prints and returns for each end state (u13). Across
 # them, the end of every run that installed Crossplane names what uninstalling it leaves, which no
 # label covers (its CRDs, its webhook configurations and namespace crossplane-system), and no line
-# says nothing is left without it.
+# says nothing is left without it. The (ca) cases run the script's own run_custom_attr_power, the
+# CUSTOM-ATTR-POWER check (ankasoft #6), and its cleanup of the CustomAttribute it creates, against
+# a fake provider (CA_STUB_READY, CA_PROVIDER, CA_STUB_DELETE) that reverts an out-of-band custom
+# attribute value with the VM left off, or powers the VM on, or never reverts it, or never sets
+# it, or never makes the CustomAttribute Ready, or cannot delete it.
 #
 # govc is not replaced in-process: the script's own g wrapper runs a fake govc, first on PATH,
 # that models a vCenter. It checks the password of every login against the vCenter's current one
@@ -107,8 +111,22 @@ done
 
 # The fake govc. E2E_SELFTEST_VC is the per-case vCenter state directory: password (the current
 # one), auth.log (one line per login: ok|rejected, the password used, the command), q/ (queued
-# session.ls documents; "FAIL" makes that call fail like an unreachable vCenter) and vms/NAME/
-# (power, cpu, mem, annotation, res). Paths it prints are /lab/vm/e2e/NAME.
+# session.ls documents; "FAIL" makes that call fail like an unreachable vCenter), fields.tsv (the
+# custom attribute definitions, one "key<TAB>name<TAB>type" line each) and vms/NAME/ (power, cpu,
+# mem, annotation, res, and cv/KEY holding the VM's value of custom attribute KEY). Paths it
+# prints are /lab/vm/e2e/NAME.
+# What it prints for the custom attribute commands the CUSTOM-ATTR-POWER check runs was recorded
+# from real govc, the 0.54.0 release binary and a go install build of 0.32.0, against vcsim (the
+# govmomi v0.52.0 simulator) on 2026-10-13; both printed the same:
+#   govc fields.set NAME VALUE PATH  nothing, exit 0. NAME is an attribute's name, else a literal
+#                                    key (object.CustomFieldsManager.FindKey). An unknown name:
+#                                    "govc: key name not found" on stderr, exit 1; an unknown key:
+#                                    "govc: ServerFaultCode: InvalidArgument", exit 1.
+#   govc fields.ls                   one line per attribute, "KEY  NAME  TYPE": a tabwriter with
+#                                    min width 3 and padding 2, e.g. "1  e2e-t0-attr  VirtualMachine";
+#                                    nothing when there is none.
+#   govc vm.info -json               a VM's values in .virtualMachines[0].customValue as
+#                                    [{"key":1,"value":"..."}], or null when it has none.
 cat >"$T/bin/govc" <<'EOF'
 #!/usr/bin/env bash
 set -u
@@ -138,12 +156,36 @@ case $1 in
   find) if [[ -d $d ]]; then echo "/lab/vm/e2e/${last##*/}"; fi ;;
   vm.info)
     [[ -d $d ]] || { echo '{"virtualMachines":null}'; exit 0; }
+    cv=null
+    for f in "$d"/cv/*; do
+      if [[ -f $f ]]; then cv=$(jq -c --argjson k "${f##*/}" --arg v "$(<"$f")" '(. // []) + [{key: $k, value: $v}]' <<<"$cv"); fi
+    done
     jq -n --arg p "$(<"$d/power")" --arg u "uuid-${last##*/}" --arg a "$(<"$d/annotation")" \
-      --argjson c "$(<"$d/cpu")" --argjson m "$(<"$d/mem")" \
+      --argjson c "$(<"$d/cpu")" --argjson m "$(<"$d/mem")" --argjson cv "$cv" \
       '{virtualMachines: [{runtime: {powerState: $p}, config: {instanceUuid: $u, annotation: $a,
-        hardware: {numCPU: $c, memoryMB: $m}, cpuAllocation: {reservation: 0}}}]}'
+        hardware: {numCPU: $c, memoryMB: $m}, cpuAllocation: {reservation: 0}}, customValue: $cv}]}'
     ;;
   vm.power) [[ $2 != -off ]] || echo poweredOff >"$d/power" ;;
+  fields.ls)
+    awk -F'\t' '{ n[NR] = NF; for (i = 1; i <= NF; i++) { c[NR, i] = $i; if (i < NF && length($i) + 2 > w[i]) w[i] = length($i) + 2 } }
+      END { for (r = 1; r <= NR; r++) { s = ""; for (i = 1; i < n[r]; i++) s = s sprintf("%-" (w[i] < 3 ? 3 : w[i]) "s", c[r, i]); print s c[r, n[r]] } }' "$vc/fields.tsv"
+    ;;
+  fields.set)
+    key=$(awk -F'\t' -v n="$2" '$2 == n { print $1; exit }' "$vc/fields.tsv")
+    if [[ -z $key && $2 =~ ^[0-9]+$ ]]; then
+      if ! awk -F'\t' -v k="$2" '$1 == k { f = 1 } END { exit !f }' "$vc/fields.tsv"; then
+        echo "govc: ServerFaultCode: InvalidArgument" >&2
+        exit 1
+      fi
+      key=$2
+    elif [[ -z $key ]]; then
+      echo "govc: key name not found" >&2
+      exit 1
+    fi
+    [[ -d $d ]] || { echo "fake govc: no VM at $4" >&2; exit 1; }
+    mkdir -p "$d/cv"
+    printf '%s' "$3" >"$d/cv/$key"
+    ;;
   vm.change)
     d=$vc/vms/${3##*/}
     [[ $4 != -annotation ]] || printf '%s' "$5" >"$d/annotation"
@@ -230,16 +272,28 @@ sessions_json() {
       before_a=$a
     done
   }
+  # The CustomAttribute resource; a fallback keeps every other case runnable against an older
+  # e2e-lab.sh, which has no CA_RES_CLUSTER.
+  CA_RES=${CA_RES_CLUSTER-customattributes.inventory.vsphere.alphabravo.io}
   # k plays the cluster: MRs are Ready and Synced, the AC-006 numCpus/memory patch reaches the
   # fake VM, deleting an MR deletes its VM (by name, or by label for every VM of that resource),
   # and the credentials Secret the script pipes through `create secret | label | apply` lands in
-  # $C/secrets.
+  # $C/secrets. It also plays the provider for the CustomAttribute (ca_stub_*). Every call is
+  # logged to $C/k.log.
   k() {
     local vm res a
+    printf '%s\n' "$*" >>"$C/k.log"
     case " $* " in
       *" create secret generic "*) printf 'namespace=%s credentials=%s\n' "$2" "$(cat)" ;;
       *" label --local "*) cat ;;
-      *" apply -f - "*) cat >>"$C/secrets" ;;
+      *" apply -f - "*)
+        a=$(cat)
+        if [[ $a == *"kind: CustomAttribute"* ]]; then ca_stub_create "$a"; else printf '%s\n' "$a" >>"$C/secrets"; fi
+        ;;
+      *" get $CA_RES/"*" -o json "*) ca_stub_json ;;
+      *" get $CA_RES/"*"jsonpath="*) printf 'Ready=False Creating: \nSynced=False ReconcileError: simulated create failure\n' ;;
+      *" patch "*customAttributes*) ca_stub_patch "$@" ;;
+      *" delete $CA_RES "*) ca_stub_delete ;;
       *" annotate "*) return 0 ;;
       *" get events "*) printf '{"items":[]}\n' ;;
       *" get pods "*) jq -cn --argjson n "$PODS" '{items: [range($n) | {}]}' ;;
@@ -282,7 +336,86 @@ sessions_json() {
     shift 3
     "$@"
   }
-  sleep_poll() { :; }
+  # No sleep; the provider's next reconcile of the custom attributes happens here (ca_reconcile).
+  sleep_poll() { ca_reconcile; }
+
+  # --- the provider, for the CustomAttribute and the VMs' customAttributes (CUSTOM-ATTR-POWER) ---
+  # CA_STUB_READY: yes (the provider creates the vCenter attribute, and the MR is Ready with its key
+  #   in status.atProvider.id) or no (it never becomes Ready, as without Global.ManageCustomFields).
+  # CA_PROVIDER, what an Update does for customAttributes: correct (sets the spec's values on a
+  #   spec change, and reverts drift on the next reconcile, leaving the power state alone),
+  #   poweron (also powers the VM on when it reverts drift, as ankasoft #6 reports), norevert
+  #   (applies a spec change but never reverts drift), noapply (sets nothing, as without
+  #   Global.SetCustomField), poweron-on-apply (powers the VM on whenever it sets values).
+  # CA_STUB_DELETE: ok (deleting the MR removes the vCenter attribute), stuck (the delete times
+  #   out) or leak (the MR goes, the vCenter attribute stays).
+  ca_stub_create() {
+    local name type
+    printf '%s\n' "$1" >"$C/ca.yaml"
+    [[ $CA_STUB_READY == yes ]] || return 0
+    name=$(awk '/^  forProvider:/ { f = 1; next } f && /^    name:/ { print $2; exit }' <<<"$1")
+    type=$(awk '/^    managedObjectType:/ { print $2; exit }' <<<"$1")
+    printf '%s\t%s\t%s\n' "$(awk 'END { print NR }' "$VC/fields.tsv")" "$name" "$type" >>"$VC/fields.tsv"
+  }
+  ca_stub_json() {
+    local key
+    key=$(awk -F'\t' -v n="$CA_NAME" '$2 == n { print $1; exit }' "$VC/fields.tsv")
+    if [[ $CA_STUB_READY == yes && -n $key ]]; then
+      jq -cn --arg k "$key" --arg n "$CA_NAME" '{metadata: {generation: 1}, status: {atProvider: {id: $k, name: $n,
+        managedObjectType: "VirtualMachine"}, conditions: [{type: "Ready", status: "True"}, {type: "Synced", status: "True"}]}}'
+    else
+      jq -cn '{metadata: {generation: 1}, status: {conditions: [{type: "Ready", status: "False", reason: "Creating"},
+        {type: "Synced", status: "False", reason: "ReconcileError", message: "simulated create failure"}]}}'
+    fi
+  }
+  # ca_update VM apply|reconcile: what the provider's Update does with VM's spec values
+  # (spec-cv/KEY), on a spec change (apply) or on the next reconcile after drift (reconcile).
+  ca_update() {
+    local d=$VC/vms/$1 f
+    case $CA_PROVIDER:$2 in
+      noapply:* | norevert:reconcile) return 0 ;;
+      poweron:reconcile | poweron-on-apply:*) printf poweredOn >"$d/power" ;;
+    esac
+    mkdir -p "$d/cv"
+    for f in "$d"/spec-cv/*; do
+      if [[ -f $f ]]; then printf '%s' "$(<"$f")" >"$d/cv/${f##*/}"; fi
+    done
+  }
+  ca_stub_patch() {
+    local vm payload="" arg prev_arg="" key val
+    vm=$(k_vm "$@")
+    for arg in "$@"; do
+      if [[ $prev_arg == -p ]]; then payload=$arg; fi
+      prev_arg=$arg
+    done
+    mkdir -p "$VC/vms/$vm/spec-cv"
+    while IFS=$'\t' read -r key val; do
+      printf '%s' "$val" >"$VC/vms/$vm/spec-cv/$key"
+    done < <(jq -r '.spec.forProvider.customAttributes | to_entries[] | "\(.key)\t\(.value)"' <<<"$payload")
+    ca_update "$vm" apply
+  }
+  # ca_reconcile: the provider's next reconcile of every VM whose spec sets customAttributes.
+  ca_reconcile() {
+    local d
+    for d in "$VC"/vms/*/spec-cv; do
+      if [[ -d $d ]]; then
+        d=${d%/spec-cv}
+        ca_update "${d##*/}" reconcile
+      fi
+    done
+  }
+  ca_stub_delete() {
+    local rest
+    case $CA_STUB_DELETE in
+      stuck)
+        echo "error: timed out waiting for the condition on $CA_RES/$CA_NAME" >&2
+        return 1
+        ;;
+      leak) return 0 ;;
+    esac
+    rest=$(awk -F'\t' -v n="$CA_NAME" '$2 != n' "$VC/fields.tsv")
+    if [[ -n $rest ]]; then printf '%s\n' "$rest" >"$VC/fields.tsv"; else : >"$VC/fields.tsv"; fi
+  }
   # The human at the AC-022 prompt: sets the vCenter password to the rotated one (HUMAN_SETS),
   # then answers (HUMAN_ANSWER). A yes adds a "confirmed" marker to the login log, so auth_scan
   # can tell the logins before the confirmation from those after it.
@@ -322,6 +455,11 @@ sessions_json() {
     CP_INSTALLED_BY_RUN=false CLEANUP_STARTED=false CLEANUP_OK=true ABORT_REASON=""
     VMFS_APPLIED=false VMS_APPLIED=false CP_INSTALLED_NAME="" GATE_TEARDOWN="" VMFS_MR_NAME=e2e-t0-vmfs
     LEGACY_WEBHOOK_LEFT=false
+    CA_APPLIED=false CA_NAME=e2e-t0-attr CA_VALUE=e2e-ca-spec-t0 CA_OOB=e2e-ca-oob-t0 CA_ID=""
+    CA_STUB_READY=yes CA_PROVIDER=correct CA_STUB_DELETE=ok
+    # One custom attribute exists already (key 0), so the run's own gets key 1, as on vcsim.
+    printf '0\tcost-center\tVirtualMachine\n' >"$VC/fields.tsv"
+    : >"$C/k.log"
     init_results
     exec 3>"$C/say.txt"
   }
@@ -559,28 +697,30 @@ sessions_json() {
     finish_case
   }
 
-  # (i) Password audit over the rest of the vm phase: rotation start, AC-019, AC-006 update and
-  # delete, the rotation finish and the cleanup, each with its real govc calls.
+  # (i) Password audit over the rest of the vm phase: rotation start, AC-019, CUSTOM-ATTR-POWER,
+  # AC-006 update and delete, the rotation finish and the cleanup, each with its real govc calls.
   case_i() {
     add_lab_vms
     STARTED=true CLUSTER_TOUCHED=true PROVIDER_APPLIED=true NS_CREATED=true
     queue "$PRE" "$PRE" "$POST_CD" "$FINISH_CD"
     run_ac022_rotation_start
     run_ac019
+    run_custom_attr_power
     run_ac006_update
     run_ac006_delete
     run_ac022_rotation_finish
     cleanup 2>"$C/err.txt"
     auth_scan
     expect "after the rotation: AC-022 = PASS in every column" all_cells_are PASS
-    expect "after the rotation: AC-019, AC-006-update and AC-006-delete/OT-021 = PASS in both scopes" \
-      cells_pass AC-019 AC-006-update AC-006-delete/OT-021
+    expect "after the rotation: AC-019, CUSTOM-ATTR-POWER, AC-006-update and AC-006-delete/OT-021 = PASS in both scopes" \
+      cells_pass AC-019 CUSTOM-ATTR-POWER AC-006-update AC-006-delete/OT-021
     expect "cleanup finds no leaked VM and reports nothing" eval '[[ $CLEANUP_OK == true && ! -s $C/err.txt ]]'
-    expect "every VM is gone from the fake vCenter" eval '[[ -z $(ls -A "$VC/vms") ]]'
+    expect "every VM, and the run's custom attribute, is gone from the fake vCenter" \
+      eval '[[ -z $(ls -A "$VC/vms") ]] && ! grep -q e2e-t0-attr "$VC/fields.tsv"'
     expect "govc used the original password only before the confirmation: $A_CMDS_BEFORE" test "$A_BEFORE" -eq 1
     expect "every govc login after it used the rotated password: $A_CMDS_AFTER" test "$A_WRONG:$A_REJECTED" = "0:0"
-    expect "those logins include AC-019's, AC-006's, the finish check's and cleanup's" \
-      test "$A_CMDS_AFTER" = "find session.ls vm.change vm.info vm.power"
+    expect "those logins include AC-019's, CUSTOM-ATTR-POWER's, AC-006's, the finish check's and cleanup's" \
+      test "$A_CMDS_AFTER" = "fields.ls fields.set find session.ls vm.change vm.info vm.power"
     finish_case
   }
 
@@ -2064,6 +2204,7 @@ EOF
       case $line in
         *"delete $VM_RES_CLUSTER -l "*) k='vms-cluster' ;;
         *"delete $VM_RES_NS -l "*) k='vms-ns' ;;
+        *"delete $CA_RES -l "*) k='ca' ;;
         *"delete $VMFS_RES_CLUSTER,$PC_RES_CLUSTER,$CPC_RES -l "*) k='vmfs+configs' ;;
         *"delete $PC_RES_CLUSTER,$CPC_RES -l "*) k='configs' ;;
         *"delete $PC_RES_NS -l "*) k='pc-ns' ;;
@@ -2096,6 +2237,7 @@ EOF
       if [[ $s == *"; "* ]]; then s=${s#*; }; else s=""; fi
       case $item in
         "any VirtualMachine MR labelled "*) k=vms ;;
+        "the CustomAttribute "*) k=ca ;;
         "the Observe-only VmfsDatastore "*) k=vmfs ;;
         "the ProviderConfigs, ClusterProviderConfig, credentials Secrets and namespace "*) k=configs ;;
         "Provider $PROVIDER_NAME and DeploymentRuntimeConfig $RUNTIME_CONFIG_NAME") k=provider ;;
@@ -2143,6 +2285,8 @@ EOF
       E2E_RESOURCE_POOL_ID=resgroup-1 E2E_DATASTORE_ID=datastore-1 E2E_NETWORK_ID=dvportgroup-1
       E2E_TEMPLATE_UUID=42000000-0000-0000-0000-000000000000 E2E_GUEST_ID=ubuntu64Guest E2E_FOLDER=e2e
       PATH=$C/drybin:$SELFTEST_PATH TMPDIR=$C
+      # A fresh run starts with no VM Ready; run_ac005 adds each one (setup presets both).
+      ALIVE=()
       main --dry-run --crossplane-version 2.4.2 --kube-context lab-k3s "$@"
     ) </dev/null >"$C/$label.out" 2>&1 || DRY_RC=$?
     rid=$(sed -n 's/^e2e-lab plan, run \([0-9a-f]*\) .*/\1/p' "$C/$label.out")
@@ -2166,7 +2310,7 @@ EOF
   case_u8() {
     local rm_managed rm_existing rm_gate rm_vm_s rm_ex_s rm_all_s cl_del cl_skip cl_gate
     local xp_gate xp_existing xp_vm_m xp_vm_s xp_all_m xp_all_s lk_m lk_e sk_m sk_e note_text
-    local phase existing skip want_rc want_xp want_rm want_cl want_un want_pd want_left want_steps want_note
+    local phase existing skip want_rc want_xp want_rm want_cl want_un want_pd want_left want_steps want_note want_ca
     local mode label out plan steps lastline last vmstep sum eor rem rem_what
     local -a args=()
     rm_managed="after deleting each Provider this run applied, wait up to E2E_PROVIDER_REMOVAL_TIMEOUT=10m for Crossplane to finish removing it, and only then helm uninstall Crossplane; if the wait runs out, Crossplane is left installed and cleanup is reported incomplete"
@@ -2184,10 +2328,10 @@ EOF
     xp_vm_s="managed: installs Crossplane v2.4.2 with helm and leaves it installed (--skip-cleanup)"
     xp_all_m="managed: installs Crossplane 1.20.13 with helm for the version gate and uninstalls it, then installs Crossplane v2.4.2 and uninstalls it at the end"
     xp_all_s="managed: installs Crossplane 1.20.13 with helm for the version gate and uninstalls it, then installs Crossplane v2.4.2 and leaves it installed (--skip-cleanup)"
-    lk_m="vms vmfs configs provider installed:v2.4.2"
-    lk_e="vms vmfs configs provider"
-    sk_m="vms-cluster vms-ns vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer"
-    sk_e="vms-cluster vms-ns vmfs+configs pc-ns ns+secrets delete-provider wait leave-crossplane last-resort-finalizer"
+    lk_m="vms ca vmfs configs provider installed:v2.4.2"
+    lk_e="vms ca vmfs configs provider"
+    sk_m="vms-cluster vms-ns ca vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer"
+    sk_e="vms-cluster vms-ns ca vmfs+configs pc-ns ns+secrets delete-provider wait leave-crossplane last-resort-finalizer"
     note_text="the version gate removes its own Provider and DeploymentRuntimeConfig and uninstalls Crossplane 1.20.13 even with --skip-cleanup"
     # phase|existing|skip|exit|crossplane line|provider removal line|cleanup line|planned helm
     # uninstalls|planned Provider deletes|what a real run leaves (skip)|its manual list|gate note
@@ -2227,6 +2371,21 @@ EOF
         test "$(grep -c "^+ helm --kube-context lab-k3s uninstall $CP_RELEASE " "$out")" -eq "$want_un"
       expect "$label: the dry run plans $want_pd Provider delete(s), as the plan says" \
         test "$(grep -c "^+ kubectl --context lab-k3s delete $PROVIDER_RES " "$out")" -eq "$want_pd"
+      # CUSTOM-ATTR-POWER runs in the vm phase only, and the end-of-run cleanup deletes its
+      # CustomAttribute unless --skip-cleanup.
+      want_ca=0
+      if [[ $phase != version-gate && $skip == false ]]; then want_ca=1; fi
+      expect "$label: the dry run plans $want_ca CustomAttribute delete(s) in the cleanup" \
+        test "$(grep -c "^+ kubectl --context lab-k3s delete $CA_RES -l $RUN_LABEL_KEY=t0 " "$out")" -eq "$want_ca"
+      if [[ $phase == version-gate ]]; then
+        expect "$label: no plan line or planned command mentions the CustomAttribute, and the CUSTOM-ATTR-POWER row is SKIPPED" \
+          eval '! grep -qF -e CustomAttribute -e "$CA_RES" "$out" && grep -qE "^CUSTOM-ATTR-POWER +[|] SKIPPED[(]phase=version-gate[)] +[|] SKIPPED[(]phase=version-gate[)] " "$out"'
+      else
+        expect "$label: the plan names the CustomAttribute and its privileges, and the CUSTOM-ATTR-POWER step comes after AC-019 and before AC-006" \
+          eval 'contains "$plan" "  custom attribute : CustomAttribute e2e-t0-attr (cluster-scoped, vCenter custom attribute e2e-t0-attr for VirtualMachine; CUSTOM-ATTR-POWER ankasoft #6); needs Global.ManageCustomFields and Global.SetCustomField" && in_text_order "$steps" ". [AC-019] " ". [CUSTOM-ATTR-POWER] (ankasoft #6) create CustomAttribute e2e-t0-attr " ". [AC-006] update"'
+        expect "$label: the dry run plans the CustomAttribute apply, its key wait, each VM patch and govc fields.set, and the CUSTOM-ATTR-POWER row is PLANNED" \
+          eval 'grep -qxF "    | kind: CustomAttribute" "$out" && grep -qF "+ kubectl --context lab-k3s get $CA_RES/e2e-t0-attr -o json" "$out" && [[ $(grep -c "^+ kubectl --context lab-k3s patch .*customAttributes.*e2e-ca-spec-t0" "$out") -eq 2 && $(grep -c " govc fields.set e2e-t0-attr e2e-ca-oob-t0 " "$out") -eq 2 ]] && grep -qE "^CUSTOM-ATTR-POWER +[|] PLANNED +[|] PLANNED " "$out"'
+      fi
       if ((want_un == 0)); then
         expect "$label: no plan line announces a helm uninstall (each one that mentions it says never or none)" \
           only_negated "$plan" uninstall
@@ -2248,6 +2407,8 @@ EOF
         else
           expect "$label: what a real run that ends here leaves in place: $want_left" test "$(left_kinds "$sum")" = "$want_left"
           expect "$label: its manual list: $want_steps" test "$(step_kinds "$out")" = "$want_steps"
+          expect "$label: the manual list says the provider must still run while the VMs and the CustomAttribute are deleted" \
+            grep -qxF "Manual cleanup a real run that ends here needs, on this dedicated lab cluster only, in this order (the provider must still run while VMs and the CustomAttribute are deleted):" "$out"
           if [[ $mode == existing ]]; then
             expect "$label: no step waits for Crossplane to be gone, which existing mode never makes happen" \
               eval '! grep -qF "after Crossplane is gone" "$out"'
@@ -2440,7 +2601,7 @@ EOF
     record AC-022 namespaced PASS
     record AC-022 package PASS
     while IFS='|' read -r name existing skip dry end flags want_left want_steps want_rc want_result; do
-      PROVIDER_APPLIED=false PROVIDER_REMOVAL_OK=true NS_CREATED=false VMFS_APPLIED=false VMS_APPLIED=false
+      PROVIDER_APPLIED=false PROVIDER_REMOVAL_OK=true NS_CREATED=false VMFS_APPLIED=false VMS_APPLIED=false CA_APPLIED=false
       CP_INSTALLED_BY_RUN=false CP_INSTALLED_NAME="" GATE_TEARDOWN="" CLEANUP_OK=true CLEANUP_STARTED=false ABORT_REASON=""
       LEGACY_WEBHOOK_LEFT=false PHASE=all
       EXISTING=$existing SKIP_CLEANUP=$skip DRY_RUN=$dry STARTED=true CLUSTER_TOUCHED=true
@@ -2509,11 +2670,161 @@ stopped right after the vm phase's Provider apply|false|true|false|abort|PROVIDE
 vm phase finished|false|true|false|ok|VMS_APPLIED=true VMFS_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true CP_INSTALLED_BY_RUN=true CP_INSTALLED_NAME="Crossplane v2.4.2"|vms vmfs configs provider installed:v2.4.2|vms-cluster vms-ns vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer|0|Result: PASS (cleanup skipped: --skip-cleanup left objects in place)
 version gate and vm phase finished|false|true|false|ok|GATE_TEARDOWN=finished VMS_APPLIED=true VMFS_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true CP_INSTALLED_BY_RUN=true CP_INSTALLED_NAME="Crossplane v2.4.2"|vms vmfs configs provider installed:v2.4.2|vms-cluster vms-ns vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer|0|Result: PASS (cleanup skipped: --skip-cleanup left objects in place)
 existing, vm phase finished on an NFS datastore|true|true|false|ok|VMS_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true|vms configs provider|vms-cluster vms-ns configs pc-ns ns+secrets delete-provider wait leave-crossplane last-resort-finalizer|0|Result: PASS (cleanup skipped: --skip-cleanup left objects in place)
+vm phase finished, with the CUSTOM-ATTR-POWER CustomAttribute|false|true|false|ok|VMS_APPLIED=true CA_APPLIED=true VMFS_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true CP_INSTALLED_BY_RUN=true CP_INSTALLED_NAME="Crossplane v2.4.2"|vms ca vmfs configs provider installed:v2.4.2|vms-cluster vms-ns ca vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer|0|Result: PASS (cleanup skipped: --skip-cleanup left objects in place)
+existing, vm phase finished, with the CUSTOM-ATTR-POWER CustomAttribute|true|true|false|ok|VMS_APPLIED=true CA_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true|vms ca configs provider|vms-cluster vms-ns ca configs pc-ns ns+secrets delete-provider wait leave-crossplane last-resort-finalizer|0|Result: PASS (cleanup skipped: --skip-cleanup left objects in place)
 existing, stopped right after the Provider apply|true|true|false|abort|PROVIDER_APPLIED=true|provider|delete-provider wait leave-crossplane last-resort-finalizer|1|Result: FAIL
 dry run of the version gate and vm phase|false|true|true|ok|GATE_TEARDOWN=finished VMS_APPLIED=true VMFS_APPLIED=true NS_CREATED=true PROVIDER_APPLIED=true CP_INSTALLED_BY_RUN=true CP_INSTALLED_NAME="Crossplane v2.4.2"|vms vmfs configs provider installed:v2.4.2|vms-cluster vms-ns vmfs+configs pc-ns ns+secrets delete-provider wait uninstall-after-wait finalizer|0|Result: DRY RUN (no planned command was executed)
 existing, vm phase finished, without --skip-cleanup (cleanup runs)|true|false|false|ok|PROVIDER_APPLIED=true|||0|Result: PASS
 version gate only, without --skip-cleanup (cleanup runs)|false|false|false|ok|PHASE=version-gate GATE_TEARDOWN=finished CP_INSTALLED_NAME="Crossplane 1.20.13" LEGACY_WEBHOOK_LEFT=true|||0|Result: PASS
 EOF
+    finish_case
+  }
+
+  # --- (ca) CUSTOM-ATTR-POWER (ankasoft #6): the script's own run_custom_attr_power and cleanup ---
+  # ca_vms: the two VMs AC-019 checks, as it leaves them: the namespaced one powered off out of
+  # band; the cluster one is still on, as when AC-019 could not keep it off, so the check's own
+  # power-off runs too.
+  ca_vms() {
+    add_lab_vms
+    printf poweredOff >"$VC/vms/e2e-t0-ns/power"
+  }
+  ca_value_of() { cat "$VC/vms/$1/cv/1" 2>/dev/null; }
+  power_of() { cat "$VC/vms/$1/power"; }
+  # both_vms WANT_POWER WANT_VALUE: both VMs are in that power state with that value of key 1.
+  both_vms() {
+    local vm
+    for vm in e2e-t0-cluster e2e-t0-ns; do
+      [[ $(power_of "$vm") == "$1" && $(ca_value_of "$vm") == "$2" ]] || return 1
+    done
+  }
+  # (ca1) The provider corrects the out-of-band value with a custom attribute call alone: PASS.
+  case_ca1() {
+    local y want nl=$'\n'
+    ca_vms
+    run_custom_attr_power
+    y=$(<"$C/ca.yaml")
+    want="apiVersion: inventory.vsphere.alphabravo.io/v1alpha1${nl}kind: CustomAttribute${nl}metadata:${nl}  name: e2e-t0-attr${nl}  labels:${nl}    $RUN_LABEL_KEY: \"t0\"${nl}spec:${nl}  forProvider:${nl}    name: e2e-t0-attr${nl}    managedObjectType: VirtualMachine${nl}  providerConfigRef:${nl}    name: default"
+    expect "reverted, VM still off: CUSTOM-ATTR-POWER = PASS for the cluster-scoped and the namespaced VM" cells_pass CUSTOM-ATTR-POWER
+    expect "the CustomAttribute applied is cluster-scoped (no namespace), named for the run, for VirtualMachine, labelled with the run label, on ProviderConfig default" \
+      test "$y" = "$want"
+    expect "CA_APPLIED is set, so the cleanup deletes it" test "$CA_APPLIED" = true
+    expect "the key comes from status.atProvider.id: 1, not the other attribute's 0" test "$CA_ID" = 1
+    expect "each VM's spec maps that key to the spec value, and only that key" \
+      eval '[[ $(ls "$VC/vms/e2e-t0-cluster/spec-cv") == 1 && $(ls "$VC/vms/e2e-t0-ns/spec-cv") == 1 && $(cat "$VC/vms/e2e-t0-ns/spec-cv/1") == e2e-ca-spec-t0 ]]'
+    expect "both VMs end poweredOff with the spec value" both_vms poweredOff e2e-ca-spec-t0
+    expect "govc powered off only the VM that was on" \
+      eval '[[ $(logins_of "vm.power -off -force /lab/vm/e2e/e2e-t0-cluster") -eq 1 && $(logins_of "vm.power -off -force /lab/vm/e2e/e2e-t0-ns") -eq 0 ]]'
+    expect "govc changed the value out of band, by the attribute's name, once on each VM" \
+      eval '[[ $(logins_of "fields.set e2e-t0-attr e2e-ca-oob-t0 /lab/vm/e2e/") -eq 2 ]]'
+    show "[CUSTOM-ATTR-POWER]"
+    finish_case
+  }
+  # (ca2) The value is reverted, but the VM is powered on (what ankasoft #6 reports): FAIL.
+  case_ca2() {
+    ca_vms
+    CA_PROVIDER=poweron
+    run_custom_attr_power
+    expect "reverted, VM powered on: CUSTOM-ATTR-POWER = FAIL for both VMs" \
+      eval 'cell_is "CUSTOM-ATTR-POWER|cluster" FAIL && cell_is "CUSTOM-ATTR-POWER|namespaced" FAIL'
+    expect "reverted, VM powered on: the value was reverted and the VMs are on, as the fake provider left them" both_vms poweredOn e2e-ca-spec-t0
+    expect "reverted, VM powered on: it says the VM was powered on, and to start from AC-019 if that failed too" \
+      eval 'said "[CUSTOM-ATTR-POWER][cluster] e2e-t0-cluster was powered on:" && said "if AC-019 also failed for it, start there"'
+    expect "reverted, VM powered on: it does not say the value was left unreverted" eval '! said "was not reverted"'
+    show "[CUSTOM-ATTR-POWER][namespaced] after"
+    finish_case
+  }
+  # (ca3) The out-of-band value is not reverted (the VM stays off): FAIL.
+  case_ca3() {
+    ca_vms
+    CA_PROVIDER=norevert
+    run_custom_attr_power
+    expect "not reverted: CUSTOM-ATTR-POWER = FAIL for both VMs" \
+      eval 'cell_is "CUSTOM-ATTR-POWER|cluster" FAIL && cell_is "CUSTOM-ATTR-POWER|namespaced" FAIL'
+    expect "not reverted: the VMs keep the out-of-band value and stay off" both_vms poweredOff e2e-ca-oob-t0
+    expect "not reverted: it says so, naming the poll interval" said "the out-of-band value was not reverted to the spec value within one poll interval (1m)"
+    show "[CUSTOM-ATTR-POWER][cluster] after"
+    finish_case
+  }
+  # (ca4) Applying customAttributes from the spec powers the VM on: FAIL, before any out-of-band change.
+  case_ca4() {
+    ca_vms
+    CA_PROVIDER=poweron-on-apply
+    run_custom_attr_power
+    expect "applying the spec powers the VM on: CUSTOM-ATTR-POWER = FAIL for both VMs" \
+      eval 'cell_is "CUSTOM-ATTR-POWER|cluster" FAIL && cell_is "CUSTOM-ATTR-POWER|namespaced" FAIL'
+    expect "applying the spec powers the VM on: it says so, and changes nothing out of band" \
+      eval 'said "applying customAttributes from the spec left e2e-t0-ns poweredOn, not poweredOff" && [[ $(logins_of "fields.set") -eq 0 ]]'
+    finish_case
+  }
+  # (ca5) The provider never sets the spec value (no Global.SetCustomField): FAIL, naming the privilege.
+  case_ca5() {
+    ca_vms
+    CA_PROVIDER=noapply
+    run_custom_attr_power
+    expect "spec value never set: CUSTOM-ATTR-POWER = FAIL for both VMs" \
+      eval 'cell_is "CUSTOM-ATTR-POWER|cluster" FAIL && cell_is "CUSTOM-ATTR-POWER|namespaced" FAIL'
+    expect "spec value never set: names Global.SetCustomField and RELEASING.md section 2, and changes nothing out of band" \
+      eval 'said "VSPHERE_USER lacks Global.SetCustomField (" && said "see RELEASING.md section 2" && [[ $(logins_of "fields.set") -eq 0 ]]'
+    finish_case
+  }
+  # (ca6) The CustomAttribute never becomes Ready (no Global.ManageCustomFields): FAIL, naming the
+  # privilege, with no VM touched; the MR is still tracked for cleanup.
+  case_ca6() {
+    ca_vms
+    CA_STUB_READY=no
+    run_custom_attr_power 2>"$C/err.txt"
+    expect "CustomAttribute not Ready: CUSTOM-ATTR-POWER = FAIL for both VMs" \
+      eval 'cell_is "CUSTOM-ATTR-POWER|cluster" FAIL && cell_is "CUSTOM-ATTR-POWER|namespaced" FAIL'
+    expect "CustomAttribute not Ready: names Global.ManageCustomFields and shows the MR's conditions" \
+      eval 'said "VSPHERE_USER lacks Global.ManageCustomFields (" && grep -qF "simulated create failure" "$C/err.txt"'
+    expect "CustomAttribute not Ready: no VM is patched, powered off or changed out of band" \
+      eval '! grep -q customAttributes "$C/k.log" && [[ $(logins_of "vm.power") -eq 0 && $(logins_of "fields.set") -eq 0 ]]'
+    expect "CustomAttribute not Ready: CA_APPLIED stays set, so the cleanup still deletes it" test "$CA_APPLIED" = true
+    finish_case
+  }
+  # ca_after_check: the state a passing check leaves, for the cleanup cases.
+  ca_after_check() {
+    ca_vms
+    STARTED=true CLUSTER_TOUCHED=true PROVIDER_APPLIED=true NS_CREATED=true VMS_APPLIED=true
+    run_custom_attr_power
+    : >"$C/k.log"
+  }
+  # (ca7) The cleanup deletes the CustomAttribute after the VMs and before the ProviderConfigs and
+  # the Provider, then finds it gone from vCenter.
+  case_ca7() {
+    ca_after_check
+    cleanup 2>"$C/err.txt"
+    expect "cleanup: CA_APPLIED cleared, cleanup complete, nothing reported" eval '[[ $CA_APPLIED == false && $CLEANUP_OK == true && ! -s $C/err.txt ]]'
+    expect "cleanup: the VM deletes, then the CustomAttribute delete (waiting for it), then the ProviderConfigs, then the Provider" \
+      in_order "$C/k.log" "delete $VM_RES_CLUSTER -l $RUN_LABEL_KEY=t0" "delete -n $NS $VM_RES_NS -l $RUN_LABEL_KEY=t0" \
+      "delete $CA_RES -l $RUN_LABEL_KEY=t0 --ignore-not-found --timeout=5m" "delete $PC_RES_CLUSTER -l" "delete $PROVIDER_RES -l"
+    expect "cleanup: the custom attribute is gone from vCenter, and the cleanup checked that once with govc fields.ls" \
+      eval '! grep -q e2e-t0-attr "$VC/fields.tsv" && [[ $(logins_of fields.ls) -eq 1 ]]'
+    finish_case
+  }
+  # (ca8) The CustomAttribute delete times out: the provider and Crossplane are left running, and
+  # the manual list deletes it first, before the ProviderConfigs and the Provider.
+  case_ca8() {
+    ca_after_check
+    CA_STUB_DELETE=stuck
+    cleanup 2>"$C/err.txt" || true
+    printf '           | manual list: %s\n' "$(step_kinds "$C/say.txt")"
+    expect "CustomAttribute delete stuck: cleanup incomplete, and it says the provider is left running for it" \
+      eval '[[ $CLEANUP_OK == false && $CA_APPLIED == true ]] && grep -qF "the CustomAttribute e2e-t0-attr is still present; the provider and Crossplane are left running so it can finish" "$C/err.txt"'
+    expect "CustomAttribute delete stuck: no ProviderConfig or Provider delete follows" \
+      eval '! grep -qF -e "delete $PC_RES_CLUSTER" -e "delete $PROVIDER_RES" "$C/k.log"'
+    expect "CustomAttribute delete stuck: the manual list says the provider must still run, and deletes the CustomAttribute first" \
+      eval 'said "in this order (the provider must still run while the CustomAttribute is deleted):" && [[ $(step_kinds "$C/say.txt") == "ca configs pc-ns ns+secrets delete-provider wait finalizer" ]]'
+    finish_case
+  }
+  # (ca9) The MR goes but vCenter still lists the attribute: a leak, so cleanup is incomplete.
+  case_ca9() {
+    ca_after_check
+    CA_STUB_DELETE=leak
+    cleanup 2>"$C/err.txt"
+    expect "custom attribute left in vCenter: cleanup incomplete, and it is named as leaked with how to remove it" \
+      eval '[[ $CLEANUP_OK == false ]] && grep -qF "LEAKED custom attribute in vCenter: e2e-t0-attr (remove it by hand, for example: govc fields.rm e2e-t0-attr)" "$C/err.txt"'
+    sed 's/^/  stderr: /' "$C/err.txt"
     finish_case
   }
 
@@ -2582,6 +2893,15 @@ EOF
   run_case "(u) --skip-cleanup, --phase version-gate: the gate's teardown completes, so nothing labelled is left, only what uninstalling Crossplane leaves" case_u11
   run_case "(u) --skip-cleanup, --phase version-gate: deleting the gate's Provider fails" case_u12
   run_case "(u) --help and exit codes against on_exit's end-of-run text and exit code for each end state" case_u13
+  run_case "(ca) CUSTOM-ATTR-POWER: out-of-band value reverted, VM still off" case_ca1
+  run_case "(ca) CUSTOM-ATTR-POWER: value reverted, but the VM powered on" case_ca2
+  run_case "(ca) CUSTOM-ATTR-POWER: out-of-band value not reverted" case_ca3
+  run_case "(ca) CUSTOM-ATTR-POWER: applying the spec value powers the VM on" case_ca4
+  run_case "(ca) CUSTOM-ATTR-POWER: the provider never sets the spec value (Global.SetCustomField)" case_ca5
+  run_case "(ca) CUSTOM-ATTR-POWER: the CustomAttribute never becomes Ready (Global.ManageCustomFields)" case_ca6
+  run_case "(ca) cleanup: the CustomAttribute is deleted after the VMs, before the ProviderConfigs and the Provider" case_ca7
+  run_case "(ca) cleanup: the CustomAttribute delete times out, the provider is left running" case_ca8
+  run_case "(ca) cleanup: vCenter still lists the custom attribute after its MR is gone" case_ca9
   printf '\n%s case(s), %s failed\n' "$total" "$failed"
   ((failed == 0))
 )

@@ -394,6 +394,10 @@ matters is which vCenter changes count as drift:
   applies it again. The vCenter value ends up pinned in the spec after two reconfigures. With
   `LateInitialize` left out of `spec.managementPolicies`, the field just stays reset.
 
+For `customAttributes`, the vm phase of the lab e2e checks on a real vCenter that drift is
+corrected without powering the VM on (CUSTOM-ATTR-POWER in `cluster/test/e2e-lab.sh`): a value
+changed in vCenter on a VM powered off there is reverted, and the VM stays off.
+
 **What this means for Pioneer.** Pioneer's VM envelope
 (`internal/operator/manifest/resources_vmware.go:189-311`) sets none of the CPU or memory
 reservation, limit or share-level fields. Suppose an operator powers a Pioneer VM off in vCenter

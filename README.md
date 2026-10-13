@@ -308,6 +308,12 @@ reconfigure, depends on the field:
 | Not set; has a Terraform schema default | `cpuLimit` and `memoryLimit` (`-1`), `cpuShareLevel` and `memoryShareLevel` (`normal`), `latencySensitivity`, `swapPlacementPolicy` | reverted to the default; the VM powers on |
 | Not set; no default, so Terraform enforces zero or `false` | `cpuReservation` and `memoryReservation` (`0`), `cpuHotAddEnabled`, `memoryHotAddEnabled`, `nestedHvEnabled` | reset to `0` or `false`, and the VM powers on. Late-initialization then copies the vCenter value into `spec.forProvider`, and the next reconcile applies it in a second reconfigure. |
 
+The lab e2e checks the `customAttributes` case of the first row against a real vCenter. Its
+CUSTOM-ATTR-POWER check, in the vm phase of `cluster/test/e2e-lab.sh` (see
+[RELEASING.md, section 8](RELEASING.md#8-lab-e2e-gate)), changes a custom attribute value in
+vCenter on a VM powered off there, and requires the value to be reverted with the VM still off.
+It does not exercise the other fields of that row.
+
 Only the fields in the second row are left alone when you omit them. Every other optional field
 that vCenter stores is managed even when it is not in `spec.forProvider`. Settings that only the
 provider uses, such as `waitForGuestNetTimeout`, have no vCenter value to change. To avoid unwanted
@@ -410,7 +416,8 @@ make run             # run the provider out-of-cluster against the current kube 
   vCenter. A human runs it by hand from the published tag, on a dedicated lab cluster only, never on
   a shared or production cluster. See
   [RELEASING.md, section 8](RELEASING.md#8-lab-e2e-gate) for the required environment variables.
-  It creates VirtualMachines in both scopes and, when `E2E_VMFS_DATASTORE_ID` is set or
+  Its vm phase creates VirtualMachines in both scopes, a cluster-scoped CustomAttribute (for its
+  CUSTOM-ATTR-POWER check) and, when `E2E_VMFS_DATASTORE_ID` is set or
   `E2E_DATASTORE_ID` is a VMFS datastore, an Observe-only cluster-scoped VmfsDatastore. If the
   lab cluster activates selectively (see
   [Activate only the resources you use](#activate-only-the-resources-you-use-optional)), those

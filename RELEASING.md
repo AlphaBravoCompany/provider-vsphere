@@ -84,6 +84,13 @@ single, fully qualified tag.
   on a count of zero. Use a dedicated lab user that nobody logs in as during the run, because
   every session of that user that starts after the script installs the provider counts, except
   govc's own. Change its password (AC-022) from an administrator account.
+- For the CUSTOM-ATTR-POWER check (section 8) the lab user also needs, on the vCenter root
+  object, **`Global.ManageCustomFields`** ("Global > Manage custom attributes"), for the
+  provider to create and delete the run's custom attribute, and **`Global.SetCustomField`**
+  ("Global > Set custom attribute"), for the provider and govc to set its value on the test VMs.
+  Without the first the run's CustomAttribute never becomes Ready; without the second the value
+  never reaches the VMs or `govc fields.set` fails. Either way CUSTOM-ATTR-POWER FAILs and the
+  script names the privilege to check.
 - Set `VSPHERE_USER` in the form the provider logs in with, normally `account@domain`, for example
   `svc-pioneer@lab.local`. vCenter reports session users as `DOMAIN\account`, with the domain as
   the identity source names it, for example `LAB\svc-pioneer`, `LAB.LOCAL\svc-pioneer` or
@@ -200,8 +207,8 @@ any sign of Crossplane: a Deployment, in any namespace, with a `crossplane/cross
 `crossplane` Helm release in `crossplane-system`, or the `providers.pkg.crossplane.io` CRD.
 Unless `E2E_SKIP_CLEANUP=true`, at
 the end it deletes only the objects it labelled and uninstalls the Crossplane it installed; if a
-VirtualMachine MR cannot be deleted, it leaves the provider, Crossplane and the remaining objects
-in place and prints the manual cleanup commands. It uninstalls Crossplane only once Crossplane
+VirtualMachine MR or the CustomAttribute cannot be deleted, it leaves the provider, Crossplane and
+the remaining objects in place and prints the manual cleanup commands. It uninstalls Crossplane only once Crossplane
 has finished removing the provider (no ProviderRevision or provider Deployment left, and the
 Lock's own finalizer cleared), and it waits up to `E2E_PROVIDER_REMOVAL_TIMEOUT` (default 10m)
 for that: uninstalling earlier leaves objects whose finalizers nothing can clear. So a removal
@@ -340,7 +347,8 @@ and before the next managed run after it, remove what the earlier Crossplane lef
 two runs above.
 
 The script prints a PASS/FAIL table and exits 0 only when nothing failed. It covers AC-005,
-AC-006, AC-016, AC-018, AC-019 and AC-022 for both the cluster-scoped and the namespaced VM,
+AC-006, AC-016, AC-018, AC-019, AC-022 and CUSTOM-ATTR-POWER (below) for both the cluster-scoped
+and the namespaced VM,
 AC-007 for the namespaced VM, and AC-008, AC-021 and AC-022's delayed-logout check for the
 package as a whole, and it records SafeStart as information only. How AC-022 counts depends on
 `E2E_REQUIRE_AC022`:
@@ -369,6 +377,20 @@ fields enforced as their schema default or zero value, is corrected.
   from copying observed values into `spec`, not the provider from enforcing an unset field. With
   vSphere provider 2.15.1 this correction may power a powered-off VM back on, the same as any
   other reconfigure (AC-019).
+
+CUSTOM-ATTR-POWER (ankasoft #6) runs on the cluster-scoped and the namespaced VM right after
+AC-019, which leaves them powered off out of band (a VM that is on is powered off with govc
+first). The script creates a cluster-scoped CustomAttribute `e2e-<run>-attr` for
+`VirtualMachine`, labelled like everything else it creates, and waits until it is Ready with its
+key in `status.atProvider.id`. It sets `spec.forProvider.customAttributes` to
+`{<key>: <value>}` on each VM and waits until vCenter shows that value with the VM still off.
+Then it changes the value in vCenter with `govc fields.set`, waits one poll interval, and
+requires both: the value is back to the spec value, and the VM is still `poweredOff`. vSphere
+provider 2.15.1 corrects custom attribute drift with a custom attribute call and no
+reconfigure, so it does not power the VM on. If AC-019 also failed for that VM, other drift may
+be what powered it on: start there. The cleanup deletes the CustomAttribute after the VMs, while
+the provider still runs, and then checks that vCenter no longer lists the attribute. The check
+needs the privileges in section 2.
 
 If any row fails, stop: do not move `latest`. Fix the problem and release `v2.15.1-1`. If no
 `E2E_REQUIRE_AC022=true` run ended in a plain `Result: PASS`, AC-022 was not asserted: `latest`
