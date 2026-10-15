@@ -40,14 +40,19 @@
 # CUSTOM-ATTR-POWER check (ankasoft #6), and its cleanup of the CustomAttribute it creates, against
 # a fake provider (CA_STUB_READY, CA_PROVIDER, CA_STUB_DELETE) that reverts an out-of-band custom
 # attribute value with the VM left off, or powers the VM on, or never reverts it, or never sets
-# it, or never makes the CustomAttribute Ready, or cannot delete it.
+# it, or never makes the CustomAttribute Ready, or cannot delete it. The (s) cases run AC-021's
+# run_steady_state and AC-022's rotation start and finish on session lists in vCenter 8's shape
+# (VC8_SESSION_LS, recorded from a lab vCenter 8), where the provider's own logins sit beside the
+# sessions vCenter's vAPI endpoint opens for its REST logins: AC-021 bounds the logins, prints
+# the vAPI-endpoint sessions apart and FAILs when their number grows; AC-022 only prints them.
 #
 # govc is not replaced in-process: the script's own g wrapper runs a fake govc, first on PATH,
 # that models a vCenter. It checks the password of every login against the vCenter's current one
 # (the script sets GOVC_PERSIST_SESSION=false, so every govc call is a fresh login), fails like
 # govc does on a mismatch, and logs each login. It serves queued synthetic `govc session.ls -json`
 # documents (the mo.SessionManager shape govc prints: currentSession plus sessionList of {key,
-# userName, loginTime, ipAddress, userAgent}) and a small VM inventory, and it reports every
+# userName, loginTime, ipAddress, userAgent}, and in the (s) cases every field govc prints) and a
+# small VM inventory, and it reports every
 # datastore as VMFS. Stub kubectl, helm, docker and crossplane binaries record any call, and
 # KUBECONFIG points nowhere, so nothing can reach a cluster, a vCenter or a registry.
 #
@@ -1555,6 +1560,225 @@ EOF
   }
   case_f4() { case_f "finish, govc session.ls fails" FAIL FAIL; }
 
+  # (s) The split between the provider's own logins and vAPI-endpoint sessions, with session.ls
+  # documents in vCenter 8's shape. VC8_SESSION_LS is what `govc session.ls -json` printed, with
+  # the govc 0.54.0 release binary against vCenter 8.0.3 (build 24322831) on 2026-10-15, for the
+  # lab user VSPHERE.LOCAL\e2e-provider: govc's own session (logged in as the administrator), the
+  # session vCenter's vAPI endpoint opened for one REST login by govc as the lab user (from
+  # 127.0.0.1, with a vAPI/ user agent), and a govc session of the lab user. It is verbatim: keep
+  # it exactly as it is.
+  VC8_SESSION_LS=$(
+    cat <<'JSON'
+{
+  "currentSession": {
+    "key": "524b4c6a-2200-b204-fb52-fad8c3f7231e",
+    "userName": "VSPHERE.LOCAL\\Administrator",
+    "fullName": "Administrator vsphere.local",
+    "loginTime": "2026-10-15T20:08:53.533944Z",
+    "lastActiveTime": "2026-10-15T20:08:53.533944Z",
+    "locale": "en_US",
+    "messageLocale": "en",
+    "extensionSession": false,
+    "ipAddress": "192.168.2.141",
+    "userAgent": "govc/0.54.0",
+    "callCount": 0
+  },
+  "sessionList": [
+    {
+      "key": "52484f97-c460-313e-b16a-7cf7e676595d",
+      "userName": "VSPHERE.LOCAL\\e2e-provider",
+      "fullName": "VSPHERE.LOCAL\\e2e-provider",
+      "loginTime": "2026-10-15T20:09:02.615105Z",
+      "lastActiveTime": "2026-10-15T20:09:02.615105Z",
+      "locale": "en_us",
+      "messageLocale": "en_us",
+      "extensionSession": false,
+      "ipAddress": "127.0.0.1",
+      "userAgent": "vAPI/2.100.0 Java/1.8.0_412 (Linux; 5.10.219-3.ph4; amd64)",
+      "callCount": 0
+    },
+    {
+      "key": "52c80f88-9669-0b73-13cd-a5dd48e7a976",
+      "userName": "VSPHERE.LOCAL\\e2e-provider",
+      "fullName": " ",
+      "loginTime": "2026-10-15T20:09:03.488932Z",
+      "lastActiveTime": "2026-10-15T20:09:03.488932Z",
+      "locale": "en_US",
+      "messageLocale": "en",
+      "extensionSession": false,
+      "ipAddress": "192.168.2.141",
+      "userAgent": "govc/0.54.0",
+      "callCount": 0
+    }
+  ]
+}
+JSON
+  )
+  readonly VC8_SESSION_LS
+  readonly U_VC8='VSPHERE.LOCAL\e2e-provider'
+  # The user agent of the provider's own SOAP logins, as the lab vCenter 8 listed them, and a
+  # provider pod address (synthetic: the lab listed the pod's own).
+  readonly PROVIDER_AGENT="provider govmomi/0.52.0 (go1.26.8;linux;amd64)" POD_IP=10.42.0.17
+  # vc8_doc ENTRY...: a session.ls document built from VC8_SESSION_LS's records, field for field.
+  # currentSession is the recording's govc session of the lab user (govc logs in as VSPHERE_USER),
+  # listed first in sessionList too. Each ENTRY is KEY|KIND|LOGINTIME, with KIND:
+  #   own          a provider login: the recording's govc record with POD_IP and PROVIDER_AGENT
+  #   vapi         the recording's vAPI-endpoint record (127.0.0.1, vAPI/2.100.0 Java/...)
+  #   vapi6        the same from ::1
+  #   vapi-remote  the vAPI record from POD_IP: a vAPI/ user agent, but not from a loopback address
+  vc8_doc() {
+    printf '%s\n' "$@" | jq -c -R -s --argjson rec "$VC8_SESSION_LS" --arg pod "$POD_IP" --arg agent "$PROVIDER_AGENT" '
+      ($rec.sessionList[] | select(.userAgent | startswith("vAPI/"))) as $vapi
+      | ($rec.sessionList[] | select(.userAgent | startswith("govc/"))) as $govc
+      | [split("\n")[] | select(length > 0) | split("|") | . as [$k, $kind, $t]
+         | (if $kind == "own" then $govc + {ipAddress: $pod, userAgent: $agent}
+            elif $kind == "vapi" then $vapi
+            elif $kind == "vapi6" then $vapi + {ipAddress: "::1"}
+            elif $kind == "vapi-remote" then $vapi + {ipAddress: $pod}
+            else error("vc8_doc: unknown kind \($kind)") end)
+         + {key: $k, loginTime: $t, lastActiveTime: $t}] as $l
+      | {currentSession: $govc, sessionList: ([$govc] + $l)}'
+  }
+  # Keys: K_A and K_B the provider's two logins before the rotation, K_C and K_D its rebuilt
+  # clients' after it; K_V1..K_V6 vAPI-endpoint sessions. As on the lab vCenter 8, two vAPI
+  # sessions appear with the provider's logins and two more some minutes later.
+  readonly K_A=52e2e000-0000-4000-8000-0000000000a1 K_B=52e2e000-0000-4000-8000-0000000000b1
+  readonly K_C=52e2e000-0000-4000-8000-0000000000c1 K_D=52e2e000-0000-4000-8000-0000000000d1
+  V8_A="$K_A|own|2026-10-15T20:09:01.104477Z" V8_B="$K_B|own|2026-10-15T20:09:01.388210Z"
+  V8_C="$K_C|own|2026-10-15T20:41:12.511935Z" V8_D="$K_D|own|2026-10-15T20:41:12.802746Z"
+  V8_V1="52e2e000-0000-4000-8000-0000000000f1|vapi|2026-10-15T20:09:02.615105Z"
+  V8_V2="52e2e000-0000-4000-8000-0000000000f2|vapi|2026-10-15T20:09:02.950321Z"
+  V8_V3="52e2e000-0000-4000-8000-0000000000f3|vapi|2026-10-15T20:11:33.240118Z"
+  V8_V4="52e2e000-0000-4000-8000-0000000000f4|vapi|2026-10-15T20:11:33.517406Z"
+  V8_V5="52e2e000-0000-4000-8000-0000000000f5|vapi|2026-10-15T20:41:13.630870Z"
+  V8_V6="52e2e000-0000-4000-8000-0000000000f6|vapi|2026-10-15T20:41:13.901554Z"
+  # vCenter 8 after the provider's two logins and their REST logins: 2 own + 4 vAPI-endpoint.
+  V8_STEADY=$(vc8_doc "$V8_A" "$V8_B" "$V8_V1" "$V8_V2" "$V8_V3" "$V8_V4")
+  # The same before the second pair of vAPI-endpoint sessions: 2 own + 2 vAPI-endpoint.
+  V8_VAPI2=$(vc8_doc "$V8_A" "$V8_B" "$V8_V1" "$V8_V2")
+  # count_said A [B]: how many printed lines contain A, and B when given. Through the environment,
+  # not awk -v, which would read the backslash in a userName as an escape.
+  count_said() {
+    SAID_A=$1 SAID_B=${2-} awk 'index($0, ENVIRON["SAID_A"]) && (ENVIRON["SAID_B"] == "" || index($0, ENVIRON["SAID_B"])) { n++ }
+      END { print n + 0 }' "$C/say.txt"
+  }
+  # s_steady DOC...: AC-021 over the queued samples (the last one repeats), as the lab user.
+  s_steady() {
+    VSPHERE_USER=e2e-provider@vsphere.local
+    queue "$@"
+    run_steady_state
+  }
+
+  # (s1) vCenter 8: the provider's 2 logins and 4 vAPI-endpoint sessions, the same in every sample.
+  case_s1() {
+    local lines
+    s_steady "$V8_STEADY"
+    expect "vCenter 8, 2 own + 4 vAPI-endpoint, stable: AC-021 = PASS" cell_is 'AC-021|package' PASS
+    expect "vCenter 8: each of the 3 samples counts 2 within 2..2 and names 4 vAPI-endpoint sessions" \
+      test "$(count_said "2 provider-user session(s); allowed 2..2" "; vAPI-endpoint sessions: 4 (not counted; must not grow)")" -eq 3
+    expect "vCenter 8: the 4 vAPI-endpoint session lines of each sample are marked" \
+      test "$(count_said "$U_VC8 via vAPI/2.100.0 Java/1.8.0_412 (Linux; 5.10.219-3.ph4; amd64) from 127.0.0.1 since" " [vAPI endpoint, not counted]")" -eq 12
+    expect "vCenter 8: the 2 own-login lines of each sample are not" \
+      eval '[[ $(count_said "$U_VC8 via $PROVIDER_AGENT from $POD_IP since") -eq 6 && $(count_said "from $POD_IP" "[vAPI endpoint") -eq 0 ]]'
+    expect "vCenter 8: no growth reported, no diagnostic" eval '! said "grew from" && ! said "MEASUREMENT FAILURE"'
+    show "[AC-021] interval 1:"
+    lines=$(show "since 2026-10-15T20:09:0")
+    head -n 4 <<<"$lines"
+    finish_case
+  }
+  # (s2) vCenter 8: the vAPI-endpoint sessions grow from 2 to 4 between samples: a leak.
+  case_s2() {
+    s_steady "$V8_VAPI2" "$V8_STEADY"
+    expect "vAPI-endpoint sessions 2, 4, 4: AC-021 = FAIL" cell_is 'AC-021|package' FAIL
+    expect "vAPI-endpoint sessions 2, 4, 4: says they grew, from which sample" \
+      said "[AC-021] interval 2: vAPI-endpoint sessions grew from 2 (interval 1) to 4"
+    expect "vAPI-endpoint sessions 2, 4, 4: only that one growth is reported, and the own logins stay within 2..2" \
+      eval '[[ $(count_said "grew from") -eq 1 && $(count_said "2 provider-user session(s); allowed 2..2") -eq 3 ]]'
+    show "grew from"
+    finish_case
+  }
+  # (s2b) A fall and a rise back: any later sample above an earlier one is growth.
+  case_s2b() {
+    s_steady "$V8_STEADY" "$V8_VAPI2" "$V8_STEADY"
+    expect "vAPI-endpoint sessions 4, 2, 4: AC-021 = FAIL" cell_is 'AC-021|package' FAIL
+    expect "vAPI-endpoint sessions 4, 2, 4: the rise after the fall is reported" \
+      said "[AC-021] interval 3: vAPI-endpoint sessions grew from 2 (interval 2) to 4"
+    finish_case
+  }
+  # (s3) vCenter 8: the vAPI-endpoint sessions fall from 4 to 2 and stay there.
+  case_s3() {
+    s_steady "$V8_STEADY" "$V8_VAPI2"
+    expect "vAPI-endpoint sessions 4, 2, 2: AC-021 = PASS" cell_is 'AC-021|package' PASS
+    expect "vAPI-endpoint sessions 4, 2, 2: no growth reported" eval '! said "grew from"'
+    finish_case
+  }
+  # (s4) vCenter 8: 3 own logins (one too many) beside 4 stable vAPI-endpoint sessions.
+  case_s4() {
+    s_steady "$(vc8_doc "$V8_A" "$V8_B" "$V8_C" "$V8_V1" "$V8_V2" "$V8_V3" "$V8_V4")"
+    expect "3 own + 4 vAPI-endpoint, 1 pod (allowed 2..2): AC-021 = FAIL (upper bound)" cell_is 'AC-021|package' FAIL
+    expect "3 own + 4 vAPI-endpoint: the count is the 3 own logins, and the vAPI number did not grow" \
+      eval '[[ $(count_said "3 provider-user session(s); allowed 2..2" "vAPI-endpoint sessions: 4") -eq 3 ]] && ! said "grew from"'
+    finish_case
+  }
+  # (s5) vCenter 7 lists no vAPI-endpoint session: the provider's 2 logins only.
+  case_s5() {
+    s_steady "$(vc8_doc "$V8_A" "$V8_B")"
+    expect "vCenter 7 shape, 2 own + 0 vAPI-endpoint: AC-021 = PASS" cell_is 'AC-021|package' PASS
+    expect "vCenter 7 shape: each sample counts 2 and names 0 vAPI-endpoint sessions" \
+      test "$(count_said "2 provider-user session(s); allowed 2..2" "; vAPI-endpoint sessions: 0 (not counted; must not grow)")" -eq 3
+    finish_case
+  }
+  # (s6) Only loopback (127.0.0.1 or ::1) AND a vAPI/ user agent make a vAPI-endpoint session: a
+  # vAPI/ user agent from another address is a provider login and counts.
+  case_s6() {
+    local recs
+    s_steady "$(vc8_doc "$V8_A" "$K_B|vapi-remote|2026-10-15T20:09:01.388210Z" "${V8_V1/|vapi|/|vapi6|}")"
+    expect "1 own + 1 vAPI/ from $POD_IP + 1 vAPI/ from ::1: AC-021 = PASS (2 counted, 2..2)" cell_is 'AC-021|package' PASS
+    expect "the vAPI/ session from $POD_IP is counted, the one from ::1 is not" \
+      test "$(count_said "2 provider-user session(s); allowed 2..2" "; vAPI-endpoint sessions: 1 (not counted; must not grow)")" -eq 3
+    expect "only the ::1 session line is marked" \
+      eval '[[ $(count_said "from ::1 since" "[vAPI endpoint, not counted]") -eq 3 && $(count_said "from $POD_IP" "[vAPI endpoint") -eq 0 ]]'
+    recs=$(provider_session_records | jq -c '[.[] | {ipAddress, vapi}]')
+    expect "provider_session_records flags only the ::1 session as vAPI-endpoint: $recs" \
+      test "$recs" = "[{\"ipAddress\":\"$POD_IP\",\"vapi\":false},{\"ipAddress\":\"$POD_IP\",\"vapi\":false},{\"ipAddress\":\"::1\",\"vapi\":true}]"
+    finish_case
+  }
+  # (s7) AC-022 on vCenter 8: vAPI-endpoint sessions come and go beside the provider's logins.
+  # Asserted on the provider's own logins only: 2 new ones for 2 rotated ProviderConfigs, the 2
+  # pre-rotation ones gone after the delayed logout, while 2 pre-rotation vAPI-endpoint sessions
+  # are still listed and 2 new ones appeared.
+  case_s7() {
+    VSPHERE_USER=e2e-provider@vsphere.local
+    queue "$V8_STEADY" "$V8_STEADY" \
+      "$(vc8_doc "$V8_A" "$V8_B" "$V8_V1" "$V8_V2" "$V8_V3" "$V8_V4" "$V8_C" "$V8_D" "$V8_V5" "$V8_V6")" \
+      "$(vc8_doc "$V8_V3" "$V8_V4" "$V8_C" "$V8_D" "$V8_V5" "$V8_V6")"
+    run_ac022_rotation_start
+    run_ac022_rotation_finish
+    expect "vAPI-endpoint sessions beside the logins: AC-022 cluster, namespaced and package = PASS" all_cells_are PASS
+    expect "the pre-rotation keys are the 2 own logins only" test "$PRE_ROTATION_SESSION_KEYS" = "[\"$K_A\",\"$K_B\"]"
+    expect "2 new own logins after the rotation; the 2 new vAPI-endpoint sessions are not counted" test "$NEW_LOGIN_COUNT" -eq 2
+    expect "the vAPI-endpoint sessions are printed at each step, not asserted" \
+      eval 'said "provider-user sessions before the rotation pause: 2 (at least 2 expected); vAPI-endpoint sessions, not asserted: 4" &&
+        said "(need 2: one per touched VM'"'"'s ProviderConfig); vAPI-endpoint sessions, not asserted: 6" &&
+        said "provider-user sessions after the delayed logout: 2; allowed 1..2; pre-rotation keys still alive: 0; vAPI-endpoint sessions, not asserted: 4"'
+    expect "the finish check's session lines mark the 4 vAPI-endpoint sessions" \
+      test "$(count_said "from 127.0.0.1 since" " [vAPI endpoint, not counted]")" -eq 4
+    show "vAPI-endpoint sessions, not asserted"
+    finish_case
+  }
+  # (s8) AC-022 on vCenter 8: one rebuilt client for two rotated ProviderConfigs, beside two new
+  # vAPI-endpoint sessions. Those are not logins of a rebuilt client, so AC-022 FAILs.
+  case_s8() {
+    VSPHERE_USER=e2e-provider@vsphere.local
+    queue "$V8_STEADY" "$V8_STEADY" \
+      "$(vc8_doc "$V8_A" "$V8_B" "$V8_V1" "$V8_V2" "$V8_V3" "$V8_V4" "$V8_C" "$V8_V5" "$V8_V6")"
+    run_ac022_rotation_start
+    expect "1 new own login + 2 new vAPI-endpoint sessions: AC-022 cluster = FAIL" cell_is 'AC-022|cluster' FAIL
+    expect "1 new own login + 2 new vAPI-endpoint sessions: AC-022 namespaced = FAIL" cell_is 'AC-022|namespaced' FAIL
+    expect "1 new own login + 2 new vAPI-endpoint sessions: only the own login counts as new" test "$NEW_LOGIN_COUNT" -eq 1
+    finish_case
+  }
+
   # deployments_json NS/NAME=IMAGE...: a `kubectl get deployments -A -o json` document, one
   # Deployment with one container per argument.
   deployments_json() {
@@ -2907,6 +3131,15 @@ EOF
   run_case "(f) rotation finish, old session left" case_f2
   run_case "(f) rotation finish, blind" case_f3
   run_case "(f) rotation finish, govc fails" case_f4
+  run_case "(s) AC-021, vCenter 8: 2 own logins + 4 vAPI-endpoint sessions, stable" case_s1
+  run_case "(s) AC-021, vCenter 8: vAPI-endpoint sessions grow between samples" case_s2
+  run_case "(s) AC-021, vCenter 8: vAPI-endpoint sessions fall, then rise again" case_s2b
+  run_case "(s) AC-021, vCenter 8: vAPI-endpoint sessions fall and stay down" case_s3
+  run_case "(s) AC-021, vCenter 8: too many own logins beside the vAPI-endpoint sessions" case_s4
+  run_case "(s) AC-021, vCenter 7: 2 own logins, no vAPI-endpoint session" case_s5
+  run_case "(s) AC-021: a vAPI/ user agent from a non-loopback address is a provider login" case_s6
+  run_case "(s) AC-022, vCenter 8: asserted on the own logins, vAPI-endpoint sessions only printed" case_s7
+  run_case "(s) AC-022, vCenter 8: new vAPI-endpoint sessions do not stand in for a rebuilt client" case_s8
   run_case "(p) preflight, managed mode: CRD present, image and release names foreign" case_p1
   run_case "(p) preflight, managed mode: nothing present" case_p2
   run_case "(p) preflight, --existing-crossplane with the CRD present" case_p3

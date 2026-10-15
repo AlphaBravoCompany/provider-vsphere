@@ -194,7 +194,7 @@ These are the observable surfaces users of this provider (Pioneer, release engin
 
 **Acceptance Criteria:**
 - **AC-020** [from A-015]: "Cache per ProviderConfig (Recommended)"
-- **AC-021** [derived from A-002, A-015]: During the lab e2e, the vCenter session count attributed to the provider user stays at or below the number of distinct ProviderConfigs per provider pod across at least 3 poll intervals.
+- **AC-021** [derived from A-002, A-015]: During the lab e2e, the count of the provider's own vCenter logins attributed to the provider user stays at or below the number of distinct ProviderConfigs per provider pod across at least 3 poll intervals. Sessions that vCenter's vAPI endpoint opens on the provider user's behalf (from a loopback address, with a vAPI user agent) are not in that count; they are reported separately and must not grow across the sampled intervals.
 - **AC-022** [derived from A-015]: Rotating the password in the credentials Secret makes the next reconcile use a new client and succeed; the old cached client is not reused (error case).
 
 **Codebase Integration** (derived from survey, not from interview — cite the survey file):

@@ -14,8 +14,10 @@
 #   3. install Crossplane v2 (managed mode) or use the existing one (--existing-crossplane);
 #   4. install the provider package and record whether SafeStart engaged (FR-110, info only);
 #   5. create a cluster-scoped and a namespaced VirtualMachine from examples/ and assert AC-005,
-#      AC-006, AC-007, AC-016, AC-018, AC-019 and AC-021. A third, namespaced VM checks three
-#      known upjet/vSphere-provider behaviors of this provider lineage: INITPROVIDER (ankasoft
+#      AC-006, AC-007, AC-016, AC-018, AC-019 and AC-021 (AC-021 bounds the provider's own
+#      vCenter logins and requires the sessions vCenter's vAPI endpoint opens on their behalf not
+#      to grow; see JQ_SESSION_DEFS). A third, namespaced VM checks three known
+#      upjet/vSphere-provider behaviors of this provider lineage: INITPROVIDER (ankasoft
 #      #5), LATEINIT-DISABLED (ankasoft #7: an out-of-band change to a field Crossplane does not
 #      manage, one that is optional, provider-computed, late-init-ignored and not set in
 #      forProvider, such as annotation, is not reverted), and DEFAULTED-DRIFT-CORRECTED
@@ -26,13 +28,13 @@
 #      a custom attribute this run creates (a cluster-scoped CustomAttribute), changes that value
 #      out of band, and requires it to be reverted with each VM still powered off;
 #   6. AC-022 password rotation, when E2E_VSPHERE_ROTATED_PASSWORD is set: the run records the
-#      provider-user session keys, pauses on /dev/tty for you to change the vCenter password,
-#      then logs govc in with the rotated password only (vCenter rejects the original from then
-#      on), re-samples the keys before it rotates the credentials Secrets, touches each VM and
-#      requires both Synced=True and, per rotated ProviderConfig, a NEW vCenter session: one
-#      whose session key was not listed before the rotation -- vCenter keeps the old session
-#      alive across a password change, so Synced=True alone cannot tell a rebuilt client from a
-#      reused one.
+#      provider-user session keys (of the provider's own logins, as AC-021 counts them), pauses
+#      on /dev/tty for you to change the vCenter password, then logs govc in with the rotated
+#      password only (vCenter rejects the original from then on), re-samples the keys before it
+#      rotates the credentials Secrets, touches each VM and requires both Synced=True and, per
+#      rotated ProviderConfig, a NEW vCenter session: one whose session key was not listed
+#      before the rotation -- vCenter keeps the old session alive across a password change, so
+#      Synced=True alone cannot tell a rebuilt client from a reused one.
 #      Keys, not vCenter's loginTime, identify it, so the check does not depend on the vCenter
 #      and workstation clocks agreeing. Then, after E2E_LOGOUT_DELAY (default 70m, matching the
 #      provider's delayed client logout) plus E2E_LOGOUT_SLACK (default 10m) measured on this
@@ -175,6 +177,13 @@ readonly ID_ENV=(VSPHERE_USER VSPHERE_SERVER E2E_RESOURCE_POOL_ID E2E_DATASTORE_
 # case-insensitive: svc-pioneer@lab.local matches LAB.LOCAL\svc-pioneer, not LAB\svc-pioneer).
 # provider_sessions($u; $mode; $base): the sessions of user $u that are not govc's (its current
 # session and any govc/ user agent) and not in the pre-install baseline key list $base.
+# vapi_endpoint: a session vCenter's own vAPI endpoint opened on the user's behalf, one per REST
+# (CIS) login: from a loopback ipAddress (127.0.0.1 or ::1) with a userAgent starting "vAPI/".
+# vCenter 8 lists them (vAPI/2.100.0 Java/... from 127.0.0.1); vCenter 7 lists none. The
+# provider's own logins are its other sessions: AC-021's bound and AC-022's checks apply to
+# those only. AC-021 reports the vAPI-endpoint sessions on every sample and FAILs if their number
+# grows from one sample to a later one; AC-022 only prints them. A vAPI/ user agent from any other
+# address is the provider's own login.
 readonly JQ_SESSION_DEFS='
   def acct_dom: ascii_downcase
     | if contains("\\") then (split("\\") | {d: .[0], a: (.[1:] | join("\\"))})
@@ -191,20 +200,28 @@ readonly JQ_SESSION_DEFS='
        | select(.key != $cur)
        | select((.userAgent // "") | startswith("govc/") | not)
        | select(.key as $k | $base | any(.[]; . == $k) | not)
-       | select((.userName // "") | isuser($u; $mode))];'
-# The count of the provider-user sessions, then one line per session. The userName shows which
+       | select((.userName // "") | isuser($u; $mode))];
+  def vapi_endpoint: ((.ipAddress // "") | . == "127.0.0.1" or . == "::1")
+    and ((.userAgent // "") | startswith("vAPI/"));'
+# "N V": the count of the provider's own logins and of the vAPI-endpoint sessions, then one line
+# per session, the provider's own first, each vAPI-endpoint one marked. The userName shows which
 # form matched; loginTime is vCenter's clock and informational only. Keys are never printed.
 readonly JQ_PROVIDER_SESSIONS=$JQ_SESSION_DEFS'
   provider_sessions($u; $mode; $base[0])
-  | (length | tostring),
-    (.[] | "      \(.userName) via \(.userAgent // "?") from \(.ipAddress // "?") since \(.loginTime // "?")")'
-# Same sessions as JQ_PROVIDER_SESSIONS, as {key, userName, loginTime, userAgent} records. AC-022
-# needs the exact keys: to recognize a session that did not exist before the rotation (a rebuilt
-# client), and to prove each specific pre-rotation session is gone. vCenter keeps a session alive
-# across a password change, so a shrinking count alone cannot show a client was rebuilt.
+  | map(select(vapi_endpoint | not)) as $own | map(select(vapi_endpoint)) as $vapi
+  | "\($own | length) \($vapi | length)",
+    (($own + $vapi)[]
+     | (if vapi_endpoint then " [vAPI endpoint, not counted]" else "" end) as $mark
+     | "      \(.userName) via \(.userAgent // "?") from \(.ipAddress // "?") since \(.loginTime // "?")\($mark)")'
+# Same sessions as JQ_PROVIDER_SESSIONS, as {key, userName, loginTime, userAgent, ipAddress, vapi}
+# records (vapi: a vAPI-endpoint session; own_logins keeps the others). AC-022 needs the exact
+# keys: to recognize a session that did not exist before the rotation (a rebuilt client), and to
+# prove each specific pre-rotation session is gone. vCenter keeps a session alive across a
+# password change, so a shrinking count alone cannot show a client was rebuilt.
 readonly JQ_PROVIDER_SESSION_RECORDS=$JQ_SESSION_DEFS'
   provider_sessions($u; $mode; $base[0])
-  | map({key, userName: (.userName // ""), loginTime: (.loginTime // ""), userAgent: (.userAgent // "?")})'
+  | map({key, userName: (.userName // ""), loginTime: (.loginTime // ""),
+         userAgent: (.userAgent // "?"), ipAddress: (.ipAddress // "?"), vapi: vapi_endpoint})'
 
 OPT_CROSSPLANE_VERSION="" OPT_PACKAGE="" OPT_KUBE_CONTEXT="" OPT_EXISTING="" OPT_PHASE=""
 OPT_LEGACY="" OPT_POLL="" OPT_SKIP_CLEANUP="" OPT_DRY_RUN=""
@@ -262,7 +279,9 @@ ROTATE_STARTED=false
 # (0 until one is seen). It anchors the delayed-logout wait in run_ac022_rotation_finish. It is
 # never compared with vCenter's loginTime, so vCenter/workstation clock skew cannot affect it.
 # NEW_LOGIN_COUNT: how many such sessions the latest observe_new_logins call saw.
-NEW_LOGIN_EPOCH=0 NEW_LOGIN_COUNT=0
+# NEW_LOGIN_VAPI_COUNT: how many vAPI-endpoint sessions that call listed (printed, never asserted;
+# ? when it could not list them).
+NEW_LOGIN_EPOCH=0 NEW_LOGIN_COUNT=0 NEW_LOGIN_VAPI_COUNT="?"
 # E2E_SESSION_USER_MATCH (resolve_settings, validate): account (default) or exact; see
 # JQ_SESSION_DEFS for exactly which vCenter userNames each mode counts as the provider's.
 SESSION_USER_MATCH=account
@@ -359,7 +378,12 @@ Optional environment:
                         lab.local, so svc-pioneer@lab.local matches LAB\svc-pioneer but not
                         LAB\svc-other or CORP\svc-pioneer. exact: account and domain both equal,
                         any case. Needs the Sessions.TerminateSession privilege to list the
-                        provider's sessions; see RELEASING.md section 2.)
+                        provider's sessions; see RELEASING.md section 2. Of those sessions,
+                        AC-021 bounds and AC-022 asserts only the provider's own logins. A
+                        session from 127.0.0.1 or ::1 whose user agent starts with vAPI/ is one
+                        vCenter's vAPI endpoint opened for a provider REST login: AC-021 prints
+                        their number on every sample and FAILs if it grows from one sample to a
+                        later one; AC-022 only prints them.)
   E2E_PROVIDER_REMOVAL_TIMEOUT (how long the run waits, after deleting its Provider and
                         DeploymentRuntimeConfig, for Crossplane to finish removing the
                         ProviderRevision and its Deployment (and, in managed mode, drop the
@@ -933,9 +957,9 @@ print_plan() {
     say "  $((n += 1)). [AC-016] cluster: datastoreIdRef to the VmfsDatastore resolves; namespaced: literal datastoreId on an NFS datastore works"
     say "  $((n += 1)). [AC-005] both VMs reach Ready=True and Synced=True within 30m"
     say "  $((n += 1)). [INITPROVIDER] (ankasoft #5) $INITLATE_NAME: spec.initProvider.annotation is applied on create; [LATEINIT-DISABLED] (ankasoft #7) an out-of-band annotation change is not reverted (annotation is optional, provider-computed, late-init-ignored and not in forProvider, and managementPolicies exclude LateInitialize); [DEFAULTED-DRIFT-CORRECTED] (A-036/OT-019) an out-of-band cpu_reservation change IS corrected back to 0 (it is absent from forProvider but not provider-computed, so the provider enforces its zero value) despite LateInitialize being excluded"
-    say "  $((n += 1)). [AC-018] no UpdatedExternalResource event for $STEADY_MIN_INTERVALS consecutive poll intervals; [AC-021] provider-user vCenter sessions at least $PROVIDER_CONFIGS_IN_USE (one per ProviderConfig in use; fewer means the script cannot see them: FAIL, never a pass) and at most $PROVIDER_CONFIGS_IN_USE x provider pods"
+    say "  $((n += 1)). [AC-018] no UpdatedExternalResource event for $STEADY_MIN_INTERVALS consecutive poll intervals; [AC-021] the provider's own vCenter logins (provider-user sessions that are not vAPI-endpoint sessions) at least $PROVIDER_CONFIGS_IN_USE (one per ProviderConfig in use; fewer means the script cannot see them: FAIL, never a pass) and at most $PROVIDER_CONFIGS_IN_USE x provider pods; the vAPI-endpoint sessions vCenter opens for the provider's REST logins (ipAddress 127.0.0.1 or ::1 and a vAPI/ userAgent) are not counted but printed on every sample, and their number must not grow from one sample to a later one (growth is a leak: FAIL)"
     if [[ -n $ROTATED_PASSWORD ]]; then
-      say "  $((n += 1)). [AC-022] record the provider-user session keys, pause on /dev/tty for you to change the vCenter password, then log govc in with the rotated password only (vCenter rejects the original from then on) and re-sample the keys before rotating the credentials Secrets; touch each VM and within one poll interval confirm both Synced=True AND one new provider-user session per rotated ProviderConfig, identified by a session key absent before the rotation (vCenter keeps the old session alive across a password change, so Synced=True alone cannot prove the client was rebuilt; keys, not vCenter loginTime, so vCenter/workstation clock skew cannot affect it)"
+      say "  $((n += 1)). [AC-022] record the provider-user session keys, pause on /dev/tty for you to change the vCenter password, then log govc in with the rotated password only (vCenter rejects the original from then on) and re-sample the keys before rotating the credentials Secrets; touch each VM and within one poll interval confirm both Synced=True AND one new provider-user session per rotated ProviderConfig, identified by a session key absent before the rotation (only the provider's own logins count, as for AC-021; vAPI-endpoint sessions are printed, not asserted; vCenter keeps the old session alive across a password change, so Synced=True alone cannot prove the client was rebuilt; keys, not vCenter loginTime, so vCenter/workstation clock skew cannot affect it)"
     else
       say "  $((n += 1)). [AC-022] SKIPPED(E2E_VSPHERE_ROTATED_PASSWORD not set)"
     fi
@@ -944,7 +968,7 @@ print_plan() {
     say "  $((n += 1)). [AC-006] update numCpus 2->4 and memory 4096->6144 in place (same external-name and instance UUID)"
     say "  $((n += 1)). [AC-006] delete each MR / OT-021: the VM is gone from vCenter"
     if [[ -n $ROTATED_PASSWORD ]]; then
-      say "  $((n += 1)). [AC-022] wait out whatever remains of E2E_LOGOUT_DELAY=$LOGOUT_DELAY_RAW + E2E_LOGOUT_SLACK=$LOGOUT_SLACK_RAW since a post-rotation session key was first seen (workstation clock), then confirm every pre-rotation session key is gone, at least one provider-user session is still visible (so the check cannot pass blind), and the count is back within the AC-021 bound"
+      say "  $((n += 1)). [AC-022] wait out whatever remains of E2E_LOGOUT_DELAY=$LOGOUT_DELAY_RAW + E2E_LOGOUT_SLACK=$LOGOUT_SLACK_RAW since a post-rotation session key was first seen (workstation clock), then confirm every pre-rotation session key is gone, at least one provider-user session is still visible (so the check cannot pass blind), and the count is back within the AC-021 bound, all on the provider's own logins (vAPI-endpoint sessions are printed, not asserted)"
     fi
   fi
   if [[ $SKIP_CLEANUP == true ]]; then
@@ -1196,20 +1220,23 @@ provider_pod_count() {
   if is_dry; then printf '1' && return 0; fi
   jq '.items | length' <<<"$json"
 }
-# provider_sessions prints the count of provider-user sessions, then one line per session
-# (userName, user agent, client IP, login time; session keys are never printed). It keeps govc's
-# raw output in $WORKDIR/session-last.json for session_visibility_diag.
+# provider_sessions prints "N V" -- the count of the provider's own logins among the
+# provider-user sessions, and of its vAPI-endpoint sessions (JQ_SESSION_DEFS) -- then one line
+# per session (userName, user agent, client IP, login time, and a mark on each vAPI-endpoint
+# session; session keys are never printed). It keeps govc's raw output in
+# $WORKDIR/session-last.json for session_visibility_diag.
 provider_sessions() {
   local json
   json=$(g session.ls -json) || return 1
-  if is_dry; then printf '0\n' && return 0; fi
+  if is_dry; then printf '0 0\n' && return 0; fi
   printf '%s\n' "$json" >"$WORKDIR/session-last.json"
   jq -r --arg u "$VSPHERE_USER" --arg mode "$SESSION_USER_MATCH" \
     --slurpfile base "$WORKDIR/session-baseline.json" "$JQ_PROVIDER_SESSIONS" <<<"$json"
 }
-# provider_session_records prints the JSON array [{key, userName, loginTime, userAgent}, ...] of
-# the same provider-user sessions as provider_sessions. AC-022 uses it to tell sessions apart by
-# key, which a bare count cannot do. It also keeps govc's raw output in session-last.json.
+# provider_session_records prints the JSON array [{key, userName, loginTime, userAgent,
+# ipAddress, vapi}, ...] of the same provider-user sessions as provider_sessions, vAPI-endpoint
+# ones included (vapi true). AC-022 uses it to tell sessions apart by key, which a bare count
+# cannot do. It also keeps govc's raw output in session-last.json.
 provider_session_records() {
   local json
   json=$(g session.ls -json) || return 1
@@ -1218,6 +1245,11 @@ provider_session_records() {
   jq -c --arg u "$VSPHERE_USER" --arg mode "$SESSION_USER_MATCH" \
     --slurpfile base "$WORKDIR/session-baseline.json" "$JQ_PROVIDER_SESSION_RECORDS" <<<"$json"
 }
+# own_logins RECORDS prints the records of provider_session_records' output that are the
+# provider's own logins (not vAPI-endpoint sessions): what AC-022 asserts on. vapi_count RECORDS
+# prints how many are vAPI-endpoint sessions, which AC-022 only prints.
+own_logins() { jq -c '[.[] | select(.vapi | not)]' <<<"$1"; }
+vapi_count() { jq '[.[] | select(.vapi)] | length' <<<"$1"; }
 synced_at_generation() {
   local json
   vmref "$1"
@@ -1235,12 +1267,13 @@ synced_now() {
   jq -e 'any(.status.conditions[]?; .type == "Synced" and .status == "True")' <<<"$json" >/dev/null
 }
 # observe_new_logins lists the provider-user sessions once and sets NEW_LOGIN_COUNT to how many
-# have a session key absent from PRE_ROTATION_SESSION_KEYS. Such a session is a login made after
-# the last pre-rotation sample, which run_ac022_rotation_start takes once VSPHERE_USER's vCenter
-# password has been changed, so it logged in with the rotated password, which only the rotated
-# Secret gives the provider: a rebuilt client. vCenter keeps the pre-rotation session alive
-# across a password change, so Synced=True after the touch proves nothing about which client
-# served it. The first time it sees such a session it sets NEW_LOGIN_EPOCH from this
+# of the provider's own logins have a session key absent from PRE_ROTATION_SESSION_KEYS. Such a
+# session is a login made after the last pre-rotation sample, which run_ac022_rotation_start
+# takes once VSPHERE_USER's vCenter password has been changed, so it logged in with the rotated
+# password, which only the rotated Secret gives the provider: a rebuilt client. A vAPI-endpoint
+# session is vCenter's, not a client login, so it never counts as new; NEW_LOGIN_VAPI_COUNT only
+# says how many were listed. vCenter keeps the pre-rotation session alive across a password
+# change, so Synced=True after the touch proves nothing about which client served it. The first time it sees such a session it sets NEW_LOGIN_EPOCH from this
 # workstation's clock, which anchors the delayed-logout wait in run_ac022_rotation_finish.
 # vCenter's loginTime is deliberately not used: compared with this workstation's clock, a
 # lagging vCenter clock can date a new session before the rotation, and the check would then
@@ -1248,10 +1281,11 @@ synced_now() {
 # none is new.
 observe_new_logins() {
   local json n
-  NEW_LOGIN_COUNT=0
+  NEW_LOGIN_COUNT=0 NEW_LOGIN_VAPI_COUNT="?"
   json=$(provider_session_records) || return 1
+  NEW_LOGIN_VAPI_COUNT=$(vapi_count "$json") || NEW_LOGIN_VAPI_COUNT="?"
   n=$(jq --argjson pre "$PRE_ROTATION_SESSION_KEYS" \
-    '[.[] | select(.key as $k | $pre | any(.[]; . == $k) | not)] | length' <<<"$json") || return 1
+    '[.[] | select(.vapi | not) | select(.key as $k | $pre | any(.[]; . == $k) | not)] | length' <<<"$json") || return 1
   is_num "$n" || return 1
   NEW_LOGIN_COUNT=$n
   ((n > 0)) || return 1
@@ -1933,12 +1967,16 @@ run_initlate_checks() {
 }
 
 # run_steady_state: AC-018 (no perpetual diff) and AC-021 (session count), sampled together.
-# AC-021 needs a count between min_provider_sessions and PROVIDER_CONFIGS_IN_USE x provider pods
-# in every sample: below the minimum the script is not seeing the provider's sessions (for
-# example the lab user cannot list other sessions, or its userName form does not match), and a
-# count of 0 must never pass as "within the limit".
+# AC-021 needs a count of the provider's own logins between min_provider_sessions and
+# PROVIDER_CONFIGS_IN_USE x provider pods in every sample: below the minimum the script is not
+# seeing the provider's sessions (for example the lab user cannot list other sessions, or its
+# userName form does not match), and a count of 0 must never pass as "within the limit". The
+# vAPI-endpoint sessions (JQ_SESSION_DEFS) are not in that count; each sample prints their
+# number, and AC-021 FAILs if it is higher than in an earlier sample (a leak). A constant or
+# falling number passes, and so does 0, which is all vCenter 7 lists.
 run_steady_state() {
-  local s i n pods limit min out sessions sessions_ok=true samples=0 all_clean diag_done=false
+  local s i n pods limit min out sessions vapi vapi_prev="" vapi_prev_i=0 sessions_ok=true
+  local samples=0 all_clean diag_done=false
   local -A prev=() clean=()
   min=$(min_provider_sessions)
   say "== [AC-018] + [AC-021]: sample every $POLL_INTERVAL for at least $STEADY_MIN_INTERVALS intervals (at most $STEADY_MAX_INTERVALS)"
@@ -1964,12 +2002,12 @@ run_steady_state() {
     done
     pods=$(provider_pod_count) || pods=x
     out=$(provider_sessions) || out=x
-    sessions=${out%%$'\n'*}
+    read -r sessions vapi <<<"${out%%$'\n'*}"
     if is_dry; then
-      say "[AC-021] interval $i: a real run requires at least $min provider-user session(s) (one per ProviderConfig in use; fewer is a measurement failure: FAIL) and at most $PROVIDER_CONFIGS_IN_USE x provider pods"
-    elif is_num "$pods" && is_num "$sessions"; then
+      say "[AC-021] interval $i: a real run requires at least $min of the provider's own vCenter logins (one per ProviderConfig in use; fewer is a measurement failure: FAIL) and at most $PROVIDER_CONFIGS_IN_USE x provider pods, and prints the vAPI-endpoint sessions apart, which must not grow from one sample to a later one"
+    elif is_num "$pods" && is_num "$sessions" && is_num "$vapi"; then
       limit=$((PROVIDER_CONFIGS_IN_USE * pods))
-      say "[AC-021] interval $i: $sessions provider-user session(s); allowed $min..$limit (at least 1 per ProviderConfig in use; at most $PROVIDER_CONFIGS_IN_USE ProviderConfigs x $pods provider pod(s))"
+      say "[AC-021] interval $i: $sessions provider-user session(s); allowed $min..$limit (at least 1 per ProviderConfig in use; at most $PROVIDER_CONFIGS_IN_USE ProviderConfigs x $pods provider pod(s)); vAPI-endpoint sessions: $vapi (not counted; must not grow)"
       if ((sessions < min)); then
         sessions_ok=false
         if [[ $diag_done == false ]]; then
@@ -1979,9 +2017,14 @@ run_steady_state() {
       elif ((pods < 1 || sessions > limit)); then
         sessions_ok=false
       fi
+      if [[ -n $vapi_prev ]] && ((vapi > vapi_prev)); then
+        sessions_ok=false
+        say "[AC-021] interval $i: vAPI-endpoint sessions grew from $vapi_prev (interval $vapi_prev_i) to $vapi: the sessions vCenter opens for the provider's REST logins are not being released (a leak): FAIL"
+      fi
+      vapi_prev=$vapi vapi_prev_i=$i
     else
       sessions_ok=false
-      say "[AC-021] interval $i: cannot count sessions (pods=$pods sessions=$sessions)"
+      say "[AC-021] interval $i: cannot count sessions (pods=$pods sessions=$sessions vAPI-endpoint=${vapi:-?})"
     fi
     if [[ $out == *$'\n'* ]]; then say "${out#*$'\n'}"; fi
     samples=$i
@@ -2036,7 +2079,9 @@ rotate_confirm() {
 # one new key per touched VM. Keys, not vCenter's loginTime, so the result does not depend on the
 # vCenter and workstation clocks agreeing. Fewer visible provider sessions than
 # min_provider_sessions before the pause is a measurement failure (FAIL, and no pause), because
-# an invisible or incomplete key list would make old sessions look new.
+# an invisible or incomplete key list would make old sessions look new. Every count and key here
+# is of the provider's own logins, as AC-021 counts them (own_logins); the vAPI-endpoint sessions
+# are only printed.
 #
 # Password order. Every govc call is a fresh login (GOVC_PERSIST_SESSION=false), and vCenter
 # rejects the original password as soon as you change it, so govc uses the original password up
@@ -2056,7 +2101,8 @@ rotate_confirm() {
 # the old client's specific pre-rotation sessions are gone, anchored on the workstation time the
 # first new key was seen here rather than on the moment the Secret was rotated.
 run_ac022_rotation_start() {
-  local s min pre_json pre_count="" post_json post_count="" keys post_ok=false login_ok synced_ok
+  local s min pre_json pre_count="" pre_vapi="?" post_json post_count="" post_vapi="?" keys
+  local post_ok=false login_ok synced_ok
   local -a touched=()
   if [[ -z $ROTATED_PASSWORD ]]; then
     for s in "${ALIVE[@]}" package; do record AC-022 "$s" "SKIPPED(E2E_VSPHERE_ROTATED_PASSWORD not set)"; done
@@ -2064,7 +2110,7 @@ run_ac022_rotation_start() {
   fi
   if is_dry; then
     say "== [AC-022] password rotation: dry run prompts nothing and waits nothing"
-    say "  (a real run first records the provider-user session keys with the original password and requires at least one visible session per ProviderConfig in use -- otherwise AC-022 FAILs as a measurement failure without pausing -- then pauses here on /dev/tty, up to ${ROTATION_CONFIRM_TIMEOUT}s, for you to change the vCenter password)"
+    say "  (a real run first records the provider-user session keys of the provider's own logins, as AC-021 counts them (vAPI-endpoint sessions are printed, not asserted), with the original password and requires at least one visible session per ProviderConfig in use -- otherwise AC-022 FAILs as a measurement failure without pausing -- then pauses here on /dev/tty, up to ${ROTATION_CONFIRM_TIMEOUT}s, for you to change the vCenter password)"
     say "  (from your confirmation on, govc logs in with the rotated password only, since vCenter rejects the original one; it re-samples the keys before the Secret rotation to add any session opened during the pause; after the touch, each scope needs Synced=True AND one new provider-user session per rotated ProviderConfig, identified by a session key absent before the rotation, since vCenter keeps the old session alive across a password change; keys, not vCenter loginTime, so vCenter/workstation clock skew cannot affect the result, and the delayed-logout wait starts on the workstation clock when the first new key is seen)"
     for s in "${ALIVE[@]}" package; do record AC-022 "$s" PLANNED; done
     return 0
@@ -2072,8 +2118,9 @@ run_ac022_rotation_start() {
   say "== [AC-022] password rotation (US-006)"
   min=$(min_provider_sessions)
   # Sample 1 (see above): before the pause, with the original password.
-  if pre_json=$(provider_session_records) && pre_count=$(jq 'length' <<<"$pre_json") && is_num "$pre_count"; then
-    say "[AC-022] provider-user sessions before the rotation pause: $pre_count (at least $min expected)"
+  if pre_json=$(provider_session_records) && pre_vapi=$(vapi_count "$pre_json") && pre_json=$(own_logins "$pre_json") &&
+    pre_count=$(jq 'length' <<<"$pre_json") && is_num "$pre_count"; then
+    say "[AC-022] provider-user sessions before the rotation pause: $pre_count (at least $min expected); vAPI-endpoint sessions, not asserted: $pre_vapi"
   else
     pre_count=""
     say "[AC-022] cannot list the vCenter sessions (govc session.ls failed)"
@@ -2094,7 +2141,8 @@ run_ac022_rotation_start() {
   # too -- reads VSPHERE_PASSWORD when it runs, so from here on it logs in with the rotated one.
   VSPHERE_PASSWORD=$ROTATED_PASSWORD
   # Sample 2 (see above): with the rotated password, before the Secret changes.
-  if post_json=$(provider_session_records) && post_count=$(jq 'length' <<<"$post_json") && is_num "$post_count" &&
+  if post_json=$(provider_session_records) && post_vapi=$(vapi_count "$post_json") &&
+    post_json=$(own_logins "$post_json") && post_count=$(jq 'length' <<<"$post_json") && is_num "$post_count" &&
     keys=$(jq -c --argjson pre "$PRE_ROTATION_SESSION_KEYS" '$pre + [.[].key] | unique' <<<"$post_json"); then
     PRE_ROTATION_SESSION_KEYS=$keys
     post_ok=true
@@ -2112,7 +2160,7 @@ run_ac022_rotation_start() {
     return 0
   fi
   ROTATE_STARTED=true
-  say "[AC-022] pre-rotation provider sessions recorded: $(jq 'length' <<<"$PRE_ROTATION_SESSION_KEYS") key(s) ($pre_count before the pause, $post_count after the password change)"
+  say "[AC-022] pre-rotation provider sessions recorded: $(jq 'length' <<<"$PRE_ROTATION_SESSION_KEYS") key(s) ($pre_count before the pause, $post_count after the password change; vAPI-endpoint sessions, not asserted: $pre_vapi and $post_vapi)"
   for s in "${ALIVE[@]}"; do
     vmref "$s"
     if k annotate "${REF[@]}" "$TOUCH_ANNOTATION=$RUN_ID-$SECONDS" --overwrite; then
@@ -2125,7 +2173,7 @@ run_ac022_rotation_start() {
   sleep_poll
   login_ok=false
   if observe_new_logins && ((NEW_LOGIN_COUNT >= ${#touched[@]})); then login_ok=true; fi
-  say "[AC-022] provider-user sessions with a key absent before the rotation: $NEW_LOGIN_COUNT (need ${#touched[@]}: one per touched VM's ProviderConfig)"
+  say "[AC-022] provider-user sessions with a key absent before the rotation: $NEW_LOGIN_COUNT (need ${#touched[@]}: one per touched VM's ProviderConfig); vAPI-endpoint sessions, not asserted: $NEW_LOGIN_VAPI_COUNT"
   for s in "${touched[@]}"; do
     vmref "$s"
     synced_ok=false
@@ -2155,9 +2203,10 @@ run_ac022_rotation_start() {
 # provider-user session must still be seen: barring a session error, the rebuilt clients stay
 # cached until cleanup deletes their ProviderConfigs, and the INITPROVIDER/LATEINIT VM still
 # uses the namespaced one. Called last in phase_vm so the wait overlaps run_ac019 and the AC-006
-# checks instead of blocking on its own.
+# checks instead of blocking on its own. Sessions and keys are the provider's own logins, as
+# AC-021 counts them; the vAPI-endpoint sessions are only printed.
 run_ac022_rotation_finish() {
-  local remaining pods now deadline still_json still_count="" sessions="" limit
+  local remaining pods now deadline still_json="" still_count="" sessions="" vapi="?" limit
   [[ $ROTATE_STARTED == true ]] || return 0
   say "== [AC-022] delayed logout: E2E_LOGOUT_DELAY=$LOGOUT_DELAY_RAW + E2E_LOGOUT_SLACK=$LOGOUT_SLACK_RAW since the first post-rotation session key was seen (workstation clock)"
   if ((NEW_LOGIN_EPOCH == 0)); then
@@ -2174,14 +2223,17 @@ run_ac022_rotation_finish() {
   fi
   pods=$(provider_pod_count) || pods=x
   if still_json=$(provider_session_records); then
-    sessions=$(jq 'length' <<<"$still_json") || sessions=x
+    vapi=$(vapi_count "$still_json") || vapi="?"
+    sessions=$(jq '[.[] | select(.vapi | not)] | length' <<<"$still_json") || sessions=x
     still_count=$(jq --argjson pre "$PRE_ROTATION_SESSION_KEYS" '
-      [.[].key] as $now | [$pre[] | select(. as $k | $now | any(.[]; . == $k))] | length' <<<"$still_json") ||
+      [.[] | select(.vapi | not) | .key] as $now | [$pre[] | select(. as $k | $now | any(.[]; . == $k))] | length' <<<"$still_json") ||
       still_count=x
+  else
+    still_json=""
   fi
   if is_num "$pods" && is_num "$sessions" && is_num "$still_count"; then
     limit=$((PROVIDER_CONFIGS_IN_USE * pods))
-    say "[AC-022] provider-user sessions after the delayed logout: $sessions; allowed 1..$limit; pre-rotation keys still alive: $still_count"
+    say "[AC-022] provider-user sessions after the delayed logout: $sessions; allowed 1..$limit; pre-rotation keys still alive: $still_count; vAPI-endpoint sessions, not asserted: $vapi"
     if ((sessions < 1)); then
       session_visibility_diag AC-022 "$sessions" 1
       record AC-022 package FAIL
@@ -2194,8 +2246,9 @@ run_ac022_rotation_finish() {
     say "[AC-022] cannot count sessions (pods=$pods sessions=${sessions:-?} still_count=${still_count:-?})"
     record AC-022 package FAIL
   fi
-  if is_num "$sessions" && ((sessions > 0)); then
-    say "$(jq -r '.[] | "      \(.userName) via \(.userAgent) since \(.loginTime)"' <<<"$still_json")"
+  if [[ -n $still_json && $still_json != "[]" ]]; then
+    say "$(jq -r '(map(select(.vapi | not)) + map(select(.vapi)))[]
+      | "      \(.userName) via \(.userAgent) from \(.ipAddress) since \(.loginTime)\(if .vapi then " [vAPI endpoint, not counted]" else "" end)"' <<<"$still_json")"
   fi
 }
 

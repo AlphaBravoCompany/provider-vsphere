@@ -532,7 +532,7 @@
     {
       "id": "AC-021",
       "citation": "derived from A-002, A-015",
-      "text": "During the lab e2e, the vCenter session count attributed to the provider user stays at or below the number of distinct ProviderConfigs per provider pod across at least 3 poll intervals."
+      "text": "During the lab e2e, the count of the provider's own vCenter logins attributed to the provider user stays at or below the number of distinct ProviderConfigs per provider pod across at least 3 poll intervals. Sessions that vCenter's vAPI endpoint opens on the provider user's behalf (from a loopback address, with a vAPI user agent) are not in that count; they are reported separately and must not grow across the sampled intervals."
     },
     {
       "id": "AC-022",

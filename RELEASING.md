@@ -83,7 +83,9 @@ single, fully qualified tag.
   per ProviderConfig in use) as a measurement failure and FAILs the check rather than passing it
   on a count of zero. Use a dedicated lab user that nobody logs in as during the run, because
   every session of that user that starts after the script installs the provider counts, except
-  govc's own. Change its password (AC-022) from an administrator account.
+  govc's own and the sessions vCenter's vAPI endpoint opens for the provider's REST logins, which
+  the script reports apart (section 8). Change its password (AC-022) from an administrator
+  account.
 - For the CUSTOM-ATTR-POWER check (section 8) the lab user also needs, on the vCenter root
   object, **`Global.ManageCustomFields`** ("Global > Manage custom attributes"), for the
   provider to create and delete the run's custom attribute, and **`Global.SetCustomField`**
@@ -396,34 +398,35 @@ If any row fails, stop: do not move `latest`. Fix the problem and release `v2.15
 `E2E_REQUIRE_AC022=true` run ended in a plain `Result: PASS`, AC-022 was not asserted: `latest`
 does not move either. Repeat that run.
 
-**Known risk: REST sessions in the AC-021 and AC-022 counts.** Nobody has yet checked this
-against a lab vCenter. For each ProviderConfig, the provider's cached client holds two vCenter
-logins: a SOAP (VIM) session, and a REST (CIS) session that the vmware/vsphere provider opens
-for tags and content libraries. The client's delayed logout ends both. The script counts every
-session in `SessionManager.sessionList` whose userName matches `VSPHERE_USER`, except govc's
-own and those listed before the provider was installed, and it cannot tell a SOAP session from a
-REST one. If your vCenter lists the REST logins
-there too, a correct provider shows twice the expected count. With one provider pod and the two
-ProviderConfigs the samples look like this:
+**REST logins in the AC-021 and AC-022 counts.** For each ProviderConfig, the provider's cached
+client holds a SOAP (VIM) login and a REST (CIS) login for tags and content libraries; the
+client's delayed logout ends both. vCenter 8 (8.0.3 in the lab) also lists a session that its own
+vAPI endpoint opens on the user's behalf for each REST login: from `127.0.0.1`, with a user agent
+such as `vAPI/2.100.0 Java/1.8.0_412 (Linux; 5.10.219-3.ph4; amd64)`. With one provider pod and
+two ProviderConfigs it listed the provider's 2 SOAP sessions and 4 vAPI-endpoint sessions, two of
+them a few minutes after the logins, and the same 6 in every sample. vCenter 7 (7.0.3 in the lab)
+lists no vAPI-endpoint session.
+
+So the script counts only the provider's own logins. A provider-user session whose `ipAddress` is
+a loopback address (`127.0.0.1` or `::1`) and whose `userAgent` starts with `vAPI/` is a
+vAPI-endpoint session; every other one is a provider login. AC-021's bound applies to the
+provider logins. Every sample also prints the number of vAPI-endpoint sessions and marks their
+lines, and AC-021 FAILs if that number is higher than in an earlier sample, which is a leak; a
+constant or falling number passes, and so does 0. AC-022 checks the new sessions, the pre-rotation
+keys and the bound on the provider logins only, and prints the vAPI-endpoint sessions without
+asserting them. On vCenter 8 a sample looks like this:
 
 ```text
-[AC-021] interval 1: 4 provider-user session(s); allowed 2..2 (at least 1 per ProviderConfig in use; at most 2 ProviderConfigs x 1 provider pod(s))
-      <userName> via <userAgent> from <ipAddress> since <loginTime>
-      (four such lines, where two are expected)
-[AC-022] provider-user sessions after the delayed logout: 4; allowed 1..2; pre-rotation keys still alive: 0
+[AC-021] interval 1: 2 provider-user session(s); allowed 2..2 (at least 1 per ProviderConfig in use; at most 2 ProviderConfigs x 1 provider pod(s)); vAPI-endpoint sessions: 4 (not counted; must not grow)
+      <userName> via provider govmomi/0.52.0 (go1.26.8;linux;amd64) from <provider pod IP> since <loginTime>
+      (one more such line)
+      <userName> via vAPI/2.100.0 Java/1.8.0_412 (Linux; 5.10.219-3.ph4; amd64) from 127.0.0.1 since <loginTime> [vAPI endpoint, not counted]
+      (three more such lines)
 ```
 
-AC-021 and the AC-022 `package` cell then FAIL. The AC-022 `cluster` and `namespaced` cells
-still pass, because they need at least one new session per ProviderConfig. The `userAgent` value
-on each session line is the only field that may tell the two kinds of login apart. Two lines
-with one value and two with another point at doubled logins. If vCenter records the same value
-for both kinds, only the count shows it. The pass/fail rule stays as it is: AC-021's bound comes
-from the spec, so such a run has failed and `latest` does not move. For the spec owner, record:
-- one complete `[AC-021] interval` sample: the count line and every session line, with its
-  `userAgent`;
-- the AC-022 delayed-logout lines, if the run got that far;
-- the number of provider pods;
-- the vCenter version and build.
+If the vAPI-endpoint sessions grow, the sample says `vAPI-endpoint sessions grew from <n>
+(interval <i>) to <m>`, AC-021 FAILs and `latest` does not move. Record the samples, the number
+of provider pods, and the vCenter version and build.
 
 ## 9. Move latest, then check the tags
 
