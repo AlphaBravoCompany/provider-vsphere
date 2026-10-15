@@ -6,6 +6,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1084,4 +1085,267 @@ func TestSetupFnDoesNotCacheConfigureFailure(t *testing.T) {
 	if got := rec.count(); got != 2 {
 		t.Errorf("the reconcile after a failed login must log in again, then reuse the client: configure calls want 2, got %d", got)
 	}
+}
+
+// byID orders fakeMeta clients by ID.
+var byID = cmpopts.SortSlices(func(a, b any) bool { return a.(*fakeMeta).ID < b.(*fakeMeta).ID })
+
+func TestSessionCacheClose(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := NewSessionCache(WithLogoutDelay(5 * time.Minute))
+		rec := &logoutRecorder{}
+		c.logout = rec.logout
+		n := 0
+		create := func(context.Context) (any, error) {
+			n++
+			return &fakeMeta{ID: n}, nil
+		}
+		ctx := t.Context()
+		_, _ = c.GetOrCreate(ctx, testID, "h1", create)
+		_, _ = c.GetOrCreate(ctx, testID, "h2", create) // client 1 waits for its delayed logout
+		_, _ = c.GetOrCreate(ctx, otherID, "h1", create)
+		c.EvictIfOlderThan(otherID, time.Now().Add(time.Nanosecond)) // client 3 waits for its delayed logout
+		_, _ = c.GetOrCreate(ctx, otherID, "h1", create)
+		synctest.Wait()
+		if got := rec.loggedOut(); len(got) != 0 {
+			t.Fatalf("no client may be logged out before its delay: %v", got)
+		}
+
+		start := time.Now()
+		if err := c.Close(ctx); err != nil {
+			t.Errorf("Close(...): %v", err)
+		}
+		if elapsed := time.Since(start); elapsed != 0 {
+			t.Errorf("Close must log out at once, not after the logout delay: took %s", elapsed)
+		}
+		want := []any{&fakeMeta{ID: 1}, &fakeMeta{ID: 2}, &fakeMeta{ID: 3}, &fakeMeta{ID: 4}}
+		if diff := cmp.Diff(want, rec.loggedOut(), byID); diff != "" {
+			t.Errorf("Close must log out every cached client and every client waiting for its delayed logout: -want, +got:\n%s", diff)
+		}
+		if got := view(c); len(got) != 0 {
+			t.Errorf("Close must empty the cache, got %v", got)
+		}
+
+		// The delayed logouts that Close preempted must not log out again,
+		// and closing again must do nothing.
+		time.Sleep(2 * DefaultLogoutDelay)
+		synctest.Wait()
+		if err := c.Close(ctx); err != nil {
+			t.Errorf("a second Close(...): %v", err)
+		}
+		if diff := cmp.Diff(want, rec.loggedOut(), byID); diff != "" {
+			t.Errorf("every client must be logged out exactly once: -want, +got:\n%s", diff)
+		}
+	})
+}
+
+func TestSessionCacheCloseRacesDelayedLogout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := NewSessionCache(WithLogoutDelay(0))
+		var mu sync.Mutex
+		count := map[any]int{}
+		c.logout = func(_ context.Context, meta any) error {
+			mu.Lock()
+			defer mu.Unlock()
+			count[meta]++
+			return nil
+		}
+		// Each client's delayed logout is due at once, so its timer races
+		// Close for it.
+		for i := range 100 {
+			id := testID
+			id.Name = fmt.Sprintf("pc-%d", i)
+			c.entries[id.String()] = &sessionEntry{id: id, credsHash: "h1", meta: &fakeMeta{ID: i}, createdAt: time.Now()}
+			c.EvictIfOlderThan(id, time.Now().Add(time.Nanosecond))
+		}
+		if err := c.Close(t.Context()); err != nil {
+			t.Errorf("Close(...): %v", err)
+		}
+		synctest.Wait()
+
+		mu.Lock()
+		defer mu.Unlock()
+		if len(count) != 100 {
+			t.Errorf("every client must be logged out: want 100, got %d", len(count))
+		}
+		for meta, n := range count {
+			if n != 1 {
+				t.Errorf("client %v was logged out %d times, want exactly once", meta, n)
+			}
+		}
+	})
+}
+
+func TestSessionCacheCloseContext(t *testing.T) {
+	cases := map[string]struct {
+		reason  string
+		ctx     func(ctx context.Context) (context.Context, context.CancelFunc)
+		want    error
+		elapsed time.Duration
+	}{
+		"Deadline": {
+			reason: "Close must return at its context deadline even when a logout hangs, so shutdown never hangs.",
+			ctx: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				return context.WithTimeout(ctx, 10*time.Second)
+			},
+			want:    context.DeadlineExceeded,
+			elapsed: 10 * time.Second,
+		},
+		"Canceled": {
+			reason: "Close must return at once with a canceled context.",
+			ctx: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				ctx, cancel := context.WithCancel(ctx)
+				cancel()
+				return ctx, cancel
+			},
+			want: context.Canceled,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				c := NewSessionCache()
+				release := make(chan struct{})
+				var started atomic.Int32
+				// Every logout hangs and ignores its context, like a vCenter
+				// call stuck in a broken connection.
+				c.logout = func(context.Context, any) error {
+					started.Add(1)
+					<-release
+					return nil
+				}
+				c.entries[testID.String()] = &sessionEntry{id: testID, credsHash: "h1", meta: &fakeMeta{ID: 1}, createdAt: time.Now()}
+				c.entries[otherID.String()] = &sessionEntry{id: otherID, credsHash: "h1", meta: &fakeMeta{ID: 2}, createdAt: time.Now()}
+
+				ctx, cancel := tc.ctx(t.Context())
+				defer cancel()
+				start := time.Now()
+				err := c.Close(ctx)
+				if elapsed := time.Since(start); elapsed != tc.elapsed {
+					t.Errorf("\n%s\nClose(...) took %s, want %s", tc.reason, elapsed, tc.elapsed)
+				}
+				if !errors.Is(err, tc.want) || !strings.Contains(err.Error(), errCloseCanceled) {
+					t.Errorf("\n%s\nClose(...): want %q wrapping %v, got %v", tc.reason, errCloseCanceled, tc.want, err)
+				}
+				close(release)
+				synctest.Wait()
+				if got := started.Load(); got != 2 {
+					t.Errorf("\n%s\nClose must start the logout of every client: want 2, got %d", tc.reason, got)
+				}
+			})
+		})
+	}
+}
+
+func TestSessionCacheCloseLogoutFailure(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		log := &recordingLogger{}
+		c := NewSessionCache()
+		c.log = log
+		rec := &logoutRecorder{}
+		c.logout = func(ctx context.Context, meta any) error {
+			switch meta.(*fakeMeta).ID {
+			case 1:
+				return errors.New(errNoVIMClientField)
+			case 2:
+				panic("provider bug")
+			default:
+				return rec.logout(ctx, meta)
+			}
+		}
+		for i := 1; i <= 3; i++ {
+			id := testID
+			id.Name = fmt.Sprintf("pc-%d", i)
+			c.entries[id.String()] = &sessionEntry{id: id, credsHash: "h1", meta: &fakeMeta{ID: i}, createdAt: time.Now()}
+		}
+
+		err := c.Close(t.Context())
+		if err == nil || !strings.Contains(err.Error(), fmt.Sprintf(errCloseLogout, 1, 3)) || !strings.Contains(err.Error(), errNoVIMClientField) {
+			t.Errorf("Close must report the failed logout: want %q and %q, got %v", fmt.Sprintf(errCloseLogout, 1, 3), errNoVIMClientField, err)
+		}
+		if diff := cmp.Diff([]any{&fakeMeta{ID: 3}}, rec.loggedOut()); diff != "" {
+			t.Errorf("one failed logout must not stop the others: -want, +got:\n%s", diff)
+		}
+		if _, debug := log.messages(); !cmp.Equal([]string{msgLogoutPanicked}, debug) {
+			t.Errorf("a panicking logout must be recovered and logged at debug level, got %v", debug)
+		}
+	})
+}
+
+func TestSessionCacheAfterClose(t *testing.T) {
+	c := NewSessionCache(WithLogoutDelay(0))
+	c.sweepInterval = 0
+	rec := &logoutRecorder{}
+	c.logout = rec.logout
+	if err := c.Close(t.Context()); err != nil {
+		t.Fatalf("Close(...): %v", err)
+	}
+
+	meta, err := c.GetOrCreate(t.Context(), testID, "h1", mustNotCreate(t))
+	if meta != nil || err == nil || !strings.Contains(err.Error(), errCacheClosed) {
+		t.Errorf("GetOrCreate after Close must fail without a login: want error %q, got meta %v, err %v", errCacheClosed, meta, err)
+	}
+	if c.EvictIfOlderThan(testID, time.Now().Add(time.Hour)) {
+		t.Error("EvictIfOlderThan after Close must find nothing to evict")
+	}
+	c.EvictDeleted(t.Context(), func(context.Context, ProviderConfigIdentity) bool { return true })
+	if got := view(c); len(got) != 0 {
+		t.Errorf("a closed cache must cache nothing, got %v", got)
+	}
+	if got := rec.loggedOut(); len(got) != 0 {
+		t.Errorf("nothing must be logged out after Close, got %v", got)
+	}
+}
+
+func TestSessionCacheCloseWaitsForInflightLogin(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := NewSessionCache()
+		rec := &logoutRecorder{}
+		c.logout = rec.logout
+		release := make(chan struct{})
+		created := &fakeMeta{ID: 1}
+		type result struct {
+			meta any
+			err  error
+		}
+		results := make(chan result, 2)
+		get := func(create CreateFunc) {
+			meta, err := c.GetOrCreate(t.Context(), testID, "h1", create)
+			results <- result{meta: meta, err: err}
+		}
+		go get(func(context.Context) (any, error) {
+			<-release
+			return created, nil
+		})
+		synctest.Wait()
+		go get(mustNotCreate(t)) // waits for the login in flight
+		synctest.Wait()
+
+		closed := make(chan error, 1)
+		go func() { closed <- c.Close(t.Context()) }()
+		synctest.Wait()
+		select {
+		case err := <-closed:
+			t.Fatalf("Close must wait for the login in flight, returned %v", err)
+		default:
+		}
+
+		close(release)
+		if err := <-closed; err != nil {
+			t.Errorf("Close(...): %v", err)
+		}
+		for range 2 {
+			r := <-results
+			if r.meta != nil || r.err == nil || !strings.Contains(r.err.Error(), errCacheClosed) {
+				t.Errorf("a login that finishes after Close must not be returned: want error %q, got meta %v, err %v", errCacheClosed, r.meta, r.err)
+			}
+		}
+		synctest.Wait()
+		if diff := cmp.Diff([]any{created}, rec.loggedOut()); diff != "" {
+			t.Errorf("a client whose login finishes after Close must be logged out exactly once: -want, +got:\n%s", diff)
+		}
+		if got := view(c); len(got) != 0 {
+			t.Errorf("a closed cache must cache nothing, got %v", got)
+		}
+	})
 }

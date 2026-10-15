@@ -59,6 +59,27 @@ const (
 	tlsServerCertDir        = "/tls/server"
 )
 
+const (
+	// crdWatchCheckTimeout bounds how long the provider waits at startup for
+	// the RBAC permissions it needs for SafeStart. Crossplane's RBAC manager
+	// binds the provider's ClusterRole a few seconds after the provider pod
+	// can start, so a single check right away often finds the permissions
+	// missing and falls back to eager controller setup, which then crash-loops
+	// until Crossplane has created every CRD.
+	crdWatchCheckTimeout = 2 * time.Minute
+	// crdWatchCheckInterval is the time between two RBAC checks.
+	crdWatchCheckInterval = 5 * time.Second
+
+	// sessionLogoutTimeout bounds the logout of the cached vCenter sessions
+	// when the controller manager stops. It is well inside the default 30s
+	// termination grace period of the provider pod.
+	sessionLogoutTimeout = 10 * time.Second
+)
+
+// crdWatchVerbs are the verbs on CustomResourceDefinitions that SafeStart
+// needs.
+var crdWatchVerbs = []string{"get", "list", "watch"}
+
 func deprecationAction(flagName string) kingpin.Action {
 	return func(c *kingpin.ParseContext) error {
 		_, err := fmt.Fprintf(os.Stderr, "warning: Command-line flag %q is deprecated and no longer used. It will be removed in a future release. Please remove it from all of your configurations (DeploymentRuntimeConfigs, etc.).\n", flagName)
@@ -196,7 +217,15 @@ func main() {
 	// cluster-scoped and the namespaced controllers. The vSphere Terraform
 	// provider runs in-process (no-fork), so no Terraform CLI or provider
 	// plugin binary is used at runtime.
-	setupFn := clients.TerraformSetupBuilder()
+	sessionCache := clients.NewSessionCache()
+	setupFn := clients.TerraformSetupBuilder(clients.WithSessionCache(sessionCache))
+	// Log out every cached vCenter session when the controller manager stops,
+	// instead of leaving them open until vCenter's idle timeout.
+	kingpin.FatalIfError(mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		<-ctx.Done()
+		logoutSessions(ctx, sessionCache, log)
+		return nil
+	})), "Cannot add the vCenter session logout to the controller manager")
 
 	clusterOpts := tjcontroller.Options{
 		Options: xpcontroller.Options{
@@ -259,7 +288,7 @@ func main() {
 		namespacedOpts.ChangeLogOptions = &clo
 	}
 
-	canSafeStart, err := canWatchCRD(context.TODO(), mgr)
+	canSafeStart, err := canWatchCRD(context.TODO(), mgr, log)
 	kingpin.FatalIfError(err, "SafeStart precheck failed")
 	if canSafeStart {
 		crdGate := new(gate.Gate[schema.GroupVersionKind])
@@ -282,12 +311,66 @@ func main() {
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
 }
 
-func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
+// logoutSessions closes the session cache, logging out its vCenter sessions
+// within sessionLogoutTimeout. ctx is already done when the manager stops, so
+// only its values are kept. A failure is logged, not returned, so it never
+// fails the shutdown.
+func logoutSessions(ctx context.Context, c *clients.SessionCache, log logging.Logger) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sessionLogoutTimeout)
+	defer cancel()
+	if err := c.Close(ctx); err != nil {
+		log.Info("Cannot log out every cached vCenter session on shutdown", "error", err)
+	}
+}
+
+// canWatchCRD reports whether the provider may get, list and watch
+// CustomResourceDefinitions. It retries for up to crdWatchCheckTimeout until
+// all three verbs are allowed, so it does not race Crossplane's RBAC manager.
+func canWatchCRD(ctx context.Context, mgr manager.Manager, log logging.Logger) (bool, error) {
 	if err := authv1.AddToScheme(mgr.GetScheme()); err != nil {
 		return false, err
 	}
-	verbs := []string{"get", "list", "watch"}
-	for _, verb := range verbs {
+	return waitUntilAllowed(ctx, log, crdWatchCheckTimeout, crdWatchCheckInterval, func(ctx context.Context) (bool, error) {
+		return crdWatchAllowed(ctx, mgr.GetClient())
+	})
+}
+
+// waitUntilAllowed calls check every interval until it reports true or timeout
+// has elapsed. It returns false when the last completed check was denied. An
+// API error is retried too, as the API server may be briefly unavailable while
+// the provider starts; it is returned only when the last completed check
+// failed with it, so a persistent error is still fatal, just later. A check
+// cut short by the end of the window does not count.
+func waitUntilAllowed(ctx context.Context, log logging.Logger, timeout, interval time.Duration, check func(context.Context) (bool, error)) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	var lastErr error
+	for {
+		allowed, err := check(ctx)
+		switch {
+		case err == nil && allowed:
+			return true, nil
+		case err == nil:
+			lastErr = nil
+			log.Debug("Provider does not have RBAC permissions for watching CRDs yet, retrying", "interval", interval)
+		case ctx.Err() == nil:
+			lastErr = err
+			log.Debug("RBAC check for watching CRDs failed, retrying", "interval", interval, "error", err)
+		}
+		t := time.NewTimer(interval)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return false, lastErr
+		case <-t.C:
+		}
+	}
+}
+
+// crdWatchAllowed reports whether a SelfSubjectAccessReview allows each of
+// the get, list and watch verbs on CustomResourceDefinitions.
+func crdWatchAllowed(ctx context.Context, c client.Client) (bool, error) {
+	for _, verb := range crdWatchVerbs {
 		sar := &authv1.SelfSubjectAccessReview{
 			Spec: authv1.SelfSubjectAccessReviewSpec{
 				ResourceAttributes: &authv1.ResourceAttributes{
@@ -297,7 +380,7 @@ func canWatchCRD(ctx context.Context, mgr manager.Manager) (bool, error) {
 				},
 			},
 		}
-		if err := mgr.GetClient().Create(ctx, sar); err != nil {
+		if err := c.Create(ctx, sar); err != nil {
 			return false, errors.Wrapf(err, "unable to perform RBAC check for verb %s on CustomResourceDefinitions", verb)
 		}
 		if !sar.Status.Allowed {

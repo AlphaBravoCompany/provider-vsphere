@@ -5,6 +5,7 @@ Copyright 2022 Upbound Inc.
 package clients
 
 import (
+	"cmp"
 	"context"
 	"strings"
 	"sync"
@@ -18,6 +19,9 @@ import (
 const (
 	errWaitForSession = "cannot wait for the in-flight vSphere login of this ProviderConfig"
 	errCreatePanicked = "vSphere login panicked"
+	errCacheClosed    = "the vSphere session cache is closed because the provider is stopping"
+	errCloseLogout    = "cannot log out %d of the %d vSphere clients of the session cache"
+	errCloseCanceled  = "cannot finish logging out the vSphere clients of the session cache"
 
 	msgLogoutIncomplete = "Cannot log out every vCenter session of vSphere clients that leave the session cache; the sessions left are kept alive until the provider restarts"
 	msgLogoutPanicked   = "Recovered from a panic while logging out a vSphere client"
@@ -130,6 +134,12 @@ type SessionCache struct {
 	inflight  map[string]*inflightCreate
 	lastSweep time.Time
 	warnOnce  sync.Once
+	// retiring holds the clients that left the cache and wait for their
+	// delayed logout. Whoever removes a client from it, its timer or Close,
+	// logs it out, so no client is logged out twice.
+	retiring map[*sessionEntry]*time.Timer
+	// closed is set by Close. A closed cache caches no client.
+	closed bool
 
 	// The fields below are set by NewSessionCache. Tests may replace them
 	// before the cache is used.
@@ -166,6 +176,7 @@ func NewSessionCache(opts ...SessionCacheOption) *SessionCache {
 	c := &SessionCache{
 		entries:       map[string]*sessionEntry{},
 		inflight:      map[string]*inflightCreate{},
+		retiring:      map[*sessionEntry]*time.Timer{},
 		logoutDelay:   DefaultLogoutDelay,
 		sweepInterval: defaultSweepInterval,
 		logout:        logoutClient,
@@ -183,10 +194,15 @@ func NewSessionCache(opts ...SessionCacheOption) *SessionCache {
 // that miss on the same identity and hash share a single create call and its
 // result. A failed create caches nothing and removes the identity's previous
 // entry. The replaced or removed client is logged out after the logout delay.
+// After Close it fails without calling create.
 func (c *SessionCache) GetOrCreate(ctx context.Context, id ProviderConfigIdentity, credsHash string, create CreateFunc) (any, error) {
 	key := id.String()
 	for {
 		c.mu.Lock()
+		if c.closed {
+			c.mu.Unlock()
+			return nil, errors.New(errCacheClosed)
+		}
 		if e, ok := c.entries[key]; ok && e.credsHash == credsHash {
 			c.mu.Unlock()
 			return e.meta, nil
@@ -215,13 +231,25 @@ func (c *SessionCache) GetOrCreate(ctx context.Context, id ProviderConfigIdentit
 
 // runCreate runs create for id and publishes the outcome to the cache and to
 // every caller waiting on call. The deferred publish also runs if create
-// panics, so waiters are released and the identity is not left blocked.
+// panics, so waiters are released and the identity is not left blocked. A
+// client created after Close is logged out at once and not returned.
 func (c *SessionCache) runCreate(ctx context.Context, id ProviderConfigIdentity, call *inflightCreate, create CreateFunc) {
 	key := id.String()
 	call.err = errors.New(errCreatePanicked)
 	defer func() {
 		c.mu.Lock()
 		delete(c.inflight, key)
+		if c.closed {
+			c.mu.Unlock()
+			if call.err == nil {
+				lctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), logoutTimeout)
+				_ = c.logoutRecovered(lctx, call.meta)
+				cancel()
+			}
+			call.meta, call.err = nil, errors.New(errCacheClosed)
+			close(call.done)
+			return
+		}
 		old := c.entries[key]
 		if call.err != nil {
 			delete(c.entries, key)
@@ -296,25 +324,112 @@ func (c *SessionCache) EvictDeleted(ctx context.Context, deleted DeletedFunc) {
 }
 
 // retire logs out the client of e, which has just left the cache, after delay.
-// The logout runs in its own goroutine, bounded by logoutTimeout, so no
-// reconcile waits for it. The first logout that cannot reach every session is
-// reported once. A panic in a logout is recovered, as it must never stop the
-// provider.
+// The caller must hold c.mu. The logout runs in its own goroutine, bounded by
+// logoutTimeout, so no reconcile waits for it, unless Close has logged the
+// client out already. The first logout that cannot reach every session is
+// reported once.
 //
 //nolint:contextcheck // The logout runs after its caller has returned, up to the logout delay later, so it must not inherit the caller's context.
 func (c *SessionCache) retire(e *sessionEntry, delay time.Duration) {
-	time.AfterFunc(delay, func() {
-		defer func() {
-			if r := recover(); r != nil {
-				c.log.Debug(msgLogoutPanicked, "panic", r)
-			}
-		}()
+	c.retiring[e] = time.AfterFunc(delay, func() {
+		c.mu.Lock()
+		_, ok := c.retiring[e]
+		delete(c.retiring, e)
+		c.mu.Unlock()
+		if !ok {
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), logoutTimeout)
 		defer cancel()
-		if err := c.logout(ctx, e.meta); err != nil {
+		if err := c.logoutRecovered(ctx, e.meta); err != nil {
 			c.warnOnce.Do(func() {
 				c.log.Info(msgLogoutIncomplete, "reason", err.Error())
 			})
 		}
 	})
+}
+
+// logoutRecovered logs meta out. A panic in the logout is recovered and
+// logged at debug level, as it must never stop the provider.
+func (c *SessionCache) logoutRecovered(ctx context.Context, meta any) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			c.log.Debug(msgLogoutPanicked, "panic", r)
+		}
+	}()
+	return c.logout(ctx, meta)
+}
+
+// Close logs out at once, concurrently, every cached client and every client
+// still waiting for its delayed logout, so that no vCenter session outlives
+// the provider. It then waits for the logins in flight, whose clients are
+// logged out as they finish. It returns when all of that is done or ctx is
+// done, whichever comes first, and returns an error if a logout could not
+// reach every session or ctx ended first. After Close the cache caches
+// nothing: GetOrCreate fails, so a reconcile racing the shutdown cannot open
+// a new session. Calling Close again does nothing.
+func (c *SessionCache) Close(ctx context.Context) error {
+	metas, inflight := c.closeAndTake()
+	err := c.logoutAll(ctx, metas)
+	for _, call := range inflight {
+		select {
+		case <-call.done:
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), errCloseCanceled)
+		}
+	}
+	return err
+}
+
+// closeAndTake closes the cache and empties it. It returns the clients to log
+// out and the logins in flight, or nothing if the cache was already closed.
+func (c *SessionCache) closeAndTake() ([]any, []*inflightCreate) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return nil, nil
+	}
+	c.closed = true
+	metas := make([]any, 0, len(c.entries)+len(c.retiring))
+	for _, e := range c.entries {
+		metas = append(metas, e.meta)
+	}
+	for e, t := range c.retiring {
+		// A timer that has already fired finds its client gone and does
+		// nothing.
+		t.Stop()
+		metas = append(metas, e.meta)
+	}
+	inflight := make([]*inflightCreate, 0, len(c.inflight))
+	for _, call := range c.inflight {
+		inflight = append(inflight, call)
+	}
+	c.entries = map[string]*sessionEntry{}
+	c.retiring = map[*sessionEntry]*time.Timer{}
+	return metas, inflight
+}
+
+// logoutAll logs every client in metas out concurrently, bounded by ctx.
+func (c *SessionCache) logoutAll(ctx context.Context, metas []any) error {
+	results := make(chan error, len(metas))
+	for _, meta := range metas {
+		go func() { results <- c.logoutRecovered(ctx, meta) }()
+	}
+	var firstErr error
+	failed := 0
+	for range metas {
+		select {
+		case err := <-results:
+			if err != nil {
+				failed++
+				firstErr = cmp.Or(firstErr, err)
+			}
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), errCloseCanceled)
+		}
+	}
+	if firstErr != nil {
+		return errors.Wrapf(firstErr, errCloseLogout, failed, len(metas))
+	}
+	return nil
 }
