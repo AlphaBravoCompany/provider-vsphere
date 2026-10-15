@@ -1,13 +1,11 @@
 # OWNERS
 
-This page lists all maintainers for **this** repository. Each repository in the [Upbound
-organization](https://github.com/upbound/) will list their repository maintainers in their own
-`OWNERS.md` file.
-
+This page lists the maintainers of the AlphaBravo
+[provider-vsphere](https://github.com/AlphaBravoCompany/provider-vsphere) repository.
 
 ## Maintainers
 
-* Alper Ulucinar <alper@upbound.com> ([ulucinar](https://github.com/ulucinar))
-* Sergen Yalcin <sergen@upbound.com> ([sergenyalcin](https://github.com/sergenyalcin))
+* Jesus Fabian ([jesusfbn](https://github.com/jesusfbn))
 
-See [CODEOWNERS](./CODEOWNERS) for automatic PR assignment.
+See [CODEOWNERS](./CODEOWNERS) for automatic PR assignment. When the maintainer list changes,
+update both files.

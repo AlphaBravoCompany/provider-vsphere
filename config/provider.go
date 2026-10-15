@@ -8,13 +8,18 @@ import (
 	// Note(turkenh): we are importing this to embed provider schema document
 	_ "embed"
 
+	ujconfig "github.com/crossplane/upjet/v2/pkg/config"
+	"github.com/vmware/terraform-provider-vsphere/vsphere"
+
 	vspherecomputecluster "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_compute_cluster"
+	vsphereconfigurationprofile "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_configuration_profile"
 	vspherecontentlibrary "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_content_library"
 	vspherecustomattribute "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_custom_attribute"
 	vspheredatacenter "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_datacenter"
 	vspheredatastorecluster "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_datastore_cluster"
 	vspheredistributedportgroup "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_distributed_port_group"
 	vspheredistributedvirtualswitch "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_distributed_virtual_switch"
+	vspheredistributedvirtualswitchpvlanmapping "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_distributed_virtual_switch_pvlan_mapping"
 	vspheredpmhostoverride "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_dpm_host_override"
 	vspheredrsvmoverride "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_drs_vm_override"
 	vsphereentitypermissions "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_entity_permissions"
@@ -41,7 +46,6 @@ import (
 	vspherevmstoragepolicy "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vm_storage_policy"
 	vspherevmfsdatastore "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vmfs_datastore"
 	vspherevnic "github.com/AlphaBravoCompany/provider-vsphere/config/vsphere_vnic"
-	ujconfig "github.com/upbound/upjet/pkg/config"
 )
 
 const (
@@ -55,52 +59,93 @@ var providerSchema string
 //go:embed provider-metadata.yaml
 var providerMetadata string
 
-// GetProvider returns provider configuration
+// resourceConfigurators is the single list of shared resource configurators.
+// Every entry is applied to both the cluster-scoped provider (GetProvider)
+// and the namespaced provider (GetProviderNamespaced), so each resource family
+// is configured once under config/vsphere_* and never duplicated per scope.
+var resourceConfigurators = []func(provider *ujconfig.Provider){
+	vspherelicense.Configure,
+	vspherecomputecluster.Configure,
+	vsphereconfigurationprofile.Configure,
+	vspheredpmhostoverride.Configure,
+	vspheredrsvmoverride.Configure,
+	vspherehavmoverride.Configure,
+	vspherehost.Configure,
+	vsphereresourcepool.Configure,
+	vspherevnic.Configure,
+	vspherecustomattribute.Configure,
+	vspheredatacenter.Configure,
+	vspherefolder.Configure,
+	vspheretag.Configure,
+	vspheredistributedportgroup.Configure,
+	vspheredistributedvirtualswitch.Configure,
+	vspheredistributedvirtualswitchpvlanmapping.Configure,
+	vspherehostportgroup.Configure,
+	vspherehostvirtualswitch.Configure,
+	vsphereentitypermissions.Configure,
+	vsphererole.Configure,
+	vspheredatastorecluster.Configure,
+	vspherefile.Configure,
+	vspherenasdatastore.Configure,
+	vspherestoragedrsvmoverride.Configure,
+	vspherevmstoragepolicy.Configure,
+	vspherevmfsdatastore.Configure,
+	vspherecontentlibrary.Configure,
+	vspherevappcontainer.Configure,
+	vspherevappentity.Configure,
+	vspherevirtualdisk.Configure,
+	vspherevirtualmachine.Configure,
+	vsphereofflinesoftwaredepot.Configure,
+	vsphereguestoscustomization.Configure,
+	vspherevirtualmachineclass.Configure,
+	vspheresupervisor.Configure,
+}
+
+// GetProvider returns the cluster-scoped provider configuration.
+//
+// Every resource is reconciled in-process through the vSphere Terraform Plugin
+// SDKv2 provider (no-fork), so the CLI IncludeList is set to an empty list:
+// upjet defaults it to ".+" and panics when a resource matches more than one
+// include list.
 func GetProvider() *ujconfig.Provider {
 	pc := ujconfig.NewProvider([]byte(providerSchema), resourcePrefix, modulePath, []byte(providerMetadata),
-		ujconfig.WithRootGroup("crossplane.io"),
-		ujconfig.WithIncludeList(ExternalNameConfigured()),
+		ujconfig.WithRootGroup("vsphere.alphabravo.io"),
+		ujconfig.WithIncludeList([]string{}),
+		ujconfig.WithTerraformPluginSDKIncludeList(ExternalNameConfigured()),
+		ujconfig.WithTerraformProvider(vsphere.Provider()),
 		ujconfig.WithFeaturesPackage("internal/features"),
 		ujconfig.WithDefaultResourceOptions(
 			ExternalNameConfigurations(),
-		))
+		),
+		ujconfig.WithExampleManifestConfiguration(ujconfig.ExampleManifestConfiguration{
+			ManagedResourceNamespace: "crossplane-system",
+		}))
 
-	for _, configure := range []func(provider *ujconfig.Provider){
-		// add custom config functions
-		vspherelicense.Configure,
-		vspherecomputecluster.Configure,
-		vspheredpmhostoverride.Configure,
-		vspheredrsvmoverride.Configure,
-		vspherehavmoverride.Configure,
-		vspherehost.Configure,
-		vsphereresourcepool.Configure,
-		vspherevnic.Configure,
-		vspherecustomattribute.Configure,
-		vspheredatacenter.Configure,
-		vspherefolder.Configure,
-		vspheretag.Configure,
-		vspheredistributedportgroup.Configure,
-		vspheredistributedvirtualswitch.Configure,
-		vspherehostportgroup.Configure,
-		vspherehostvirtualswitch.Configure,
-		vsphereentitypermissions.Configure,
-		vsphererole.Configure,
-		vspheredatastorecluster.Configure,
-		vspherefile.Configure,
-		vspherenasdatastore.Configure,
-		vspherestoragedrsvmoverride.Configure,
-		vspherevmstoragepolicy.Configure,
-		vspherevmfsdatastore.Configure,
-		vspherecontentlibrary.Configure,
-		vspherevappcontainer.Configure,
-		vspherevappentity.Configure,
-		vspherevirtualdisk.Configure,
-		vspherevirtualmachine.Configure,
-		vsphereofflinesoftwaredepot.Configure,
-		vsphereguestoscustomization.Configure,
-		vspherevirtualmachineclass.Configure,
-		vspheresupervisor.Configure,
-	} {
+	for _, configure := range resourceConfigurators {
+		configure(pc)
+	}
+
+	pc.ConfigureResources()
+	return pc
+}
+
+// GetProviderNamespaced returns the namespaced provider configuration. It is
+// identical to GetProvider except for the root group.
+func GetProviderNamespaced() *ujconfig.Provider {
+	pc := ujconfig.NewProvider([]byte(providerSchema), resourcePrefix, modulePath, []byte(providerMetadata),
+		ujconfig.WithRootGroup("vsphere.m.alphabravo.io"),
+		ujconfig.WithIncludeList([]string{}),
+		ujconfig.WithTerraformPluginSDKIncludeList(ExternalNameConfigured()),
+		ujconfig.WithTerraformProvider(vsphere.Provider()),
+		ujconfig.WithFeaturesPackage("internal/features"),
+		ujconfig.WithDefaultResourceOptions(
+			ExternalNameConfigurations(),
+		),
+		ujconfig.WithExampleManifestConfiguration(ujconfig.ExampleManifestConfiguration{
+			ManagedResourceNamespace: "crossplane-system",
+		}))
+
+	for _, configure := range resourceConfigurators {
 		configure(pc)
 	}
 

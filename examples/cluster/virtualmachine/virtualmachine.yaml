@@ -1,0 +1,58 @@
+# Cluster-scoped VirtualMachine (virtualmachine.vsphere.alphabravo.io/v1alpha1) using the field
+# profile Pioneer renders for a VMware node: clone from a template, cloud-init through guestinfo,
+# no wait for guest networking. Requires Crossplane >= v2.0.0 and the cluster-scoped
+# ProviderConfig in examples/providerconfig/providerconfig.yaml.
+#
+# Replace every REPLACE_WITH_* value with your vCenter's value before applying.
+# cluster/test/e2e-lab.sh renders them from environment variables.
+apiVersion: virtualmachine.vsphere.alphabravo.io/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: example-vm-cluster
+spec:
+  forProvider:
+    name: example-vm-cluster
+    numCpus: 2
+    memory: 4096
+    disk:
+      - label: disk0
+        unitNumber: 0
+        size: 40
+        thinProvisioned: true
+        eagerlyScrub: false
+    # annotation is managed while it is set here: Crossplane reverts an edit made in vCenter,
+    # and vSphere provider 2.15.1 powers the VM on after that reconfigure. Leave it unset (or
+    # set it under spec.initProvider) to keep vCenter-side edits.
+    annotation: pioneer/example/example-vm-cluster/0
+    # Pioneer disables the guest networking wait so the VM is not rebooted during cloud-init.
+    waitForGuestNetTimeout: 0
+    waitForGuestNetRoutable: false
+    waitForGuestIpTimeout: 0
+    networkInterface:
+      - networkId: REPLACE_WITH_NETWORK_ID
+        # Optional. Pioneer pins the MAC for static IPs; the vSphere provider applies macAddress
+        # only when useStaticMac is true:
+        # macAddress: "00:50:56:00:00:01"
+        # useStaticMac: true
+    # datastoreId takes the managed object ID of any datastore. datastoreIdRef and
+    # datastoreIdSelector resolve only against a VmfsDatastore, because an upjet reference
+    # targets one kind; for an NFS datastore (NasDatastore) set datastoreId literally.
+    datastoreId: REPLACE_WITH_DATASTORE_ID
+    resourcePoolId: REPLACE_WITH_RESOURCE_POOL_ID
+    folder: REPLACE_WITH_FOLDER
+    # Optional host pin. When omitted, vSphere places the VM (DRS inside a cluster). The host
+    # must contribute the resource pool above.
+    # hostSystemId: REPLACE_WITH_HOST_SYSTEM_ID
+    clone:
+      - templateUuid: REPLACE_WITH_TEMPLATE_UUID
+    # guestId must match the template's guest OS, or the vSphere provider rejects the clone
+    # ("invalid guest ID ... for clone").
+    guestId: REPLACE_WITH_GUEST_ID
+    # firmware must match the template (bios or efi); an EFI image fails to boot as bios.
+    firmware: REPLACE_WITH_FIRMWARE
+    extraConfig:
+      # "I2Nsb3VkLWNvbmZpZwo=" is base64 of "#cloud-config" and a newline.
+      guestinfo.userdata: I2Nsb3VkLWNvbmZpZwo=
+      guestinfo.userdata.encoding: base64
+  providerConfigRef:
+    name: default

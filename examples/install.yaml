@@ -1,6 +1,9 @@
+# Installs provider-vsphere v2.15.1: one multi-arch package (linux/amd64 and linux/arm64)
+# under a single tag. Requires Crossplane >= v2.0.0. Crossplane v2 needs a fully qualified
+# package reference, so keep the docker.io/ registry host.
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: provider-vsphere
 spec:
-  package: docker.io/alphabravodevops/provider-vsphere-amd64:latest
+  package: docker.io/alphabravodevops/provider-vsphere:v2.15.1

@@ -1,1 +1,6 @@
+# Filled-in credentials never belong in this repository: git would commit them, and
+# `crossplane xpkg build --examples-root examples` packs every *.yaml and *.yml file under
+# examples/ (ignored or not) into the published package. The *.tmpl files create the Secret from
+# outside the repository; these names only catch a copy filled in here by mistake.
 secret.yaml
+namespaced-secret.yaml
