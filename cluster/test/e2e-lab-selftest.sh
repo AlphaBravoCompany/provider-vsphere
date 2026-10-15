@@ -2680,6 +2680,43 @@ EOF
     finish_case
   }
 
+  # --- (crd) phase_vm's wait for the provider CRDs: with SafeStart, Crossplane creates them as it
+  # activates each ManagedResourceDefinition, which can finish after the Provider reports Healthy,
+  # and kubectl wait fails at once on a CRD that does not exist yet ---
+  # crd_k: a kubectl whose `get crd/...` reports NotFound until its call number reaches $C/crd-after.
+  crd_k() {
+    local n
+    echo "$*" >>"$C/k.calls"
+    n=$(wc -l <"$C/k.calls")
+    if ((n < $(<"$C/crd-after"))); then
+      echo "Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io \"$CA_RES_CLUSTER\" not found" >&2
+      return 1
+    fi
+  }
+  # These cases use the script's own retrying poll_until (script_poll_until), with sleep stubbed.
+  # (crd1) The CRDs appear on the third look: the poll waits for them instead of failing.
+  case_crd1() {
+    local want
+    printf 3 >"$C/crd-after"
+    k() { crd_k "$@"; }
+    sleep() { :; }
+    expect "the poll succeeds once every CRD exists" script_poll_until 300 5 "the provider CRDs this run uses exist" provider_crds_exist
+    want="get ${PROVIDER_CRDS[*]} -o name"
+    expect "it looked three times, each time for all seven CRDs together" \
+      eval '[[ $(wc -l <"$C/k.calls") -eq 3 && $(sort -u "$C/k.calls") == "$want" ]]'
+    expect "the seven CRDs include the namespaced VirtualMachine and the CustomAttribute, which a real run once saw missing" \
+      eval '[[ ${#PROVIDER_CRDS[@]} -eq 7 && " ${PROVIDER_CRDS[*]} " == *" crd/$VM_RES_NS "* && " ${PROVIDER_CRDS[*]} " == *" crd/$CA_RES_CLUSTER "* ]]'
+    finish_case
+  }
+  # (crd2) The CRDs never appear: the poll gives up when its time runs out.
+  case_crd2() {
+    printf 99 >"$C/crd-after"
+    k() { crd_k "$@"; }
+    sleep() { :; }
+    expect "the poll fails when the CRDs never exist" eval '! script_poll_until 0 5 "the provider CRDs this run uses exist" provider_crds_exist'
+    finish_case
+  }
+
   # --- (ca) CUSTOM-ATTR-POWER (ankasoft #6): the script's own run_custom_attr_power and cleanup ---
   # ca_vms: the two VMs AC-019 checks, as it leaves them: the namespaced one powered off out of
   # band; the cluster one is still on, as when AC-019 could not keep it off, so the check's own
@@ -2893,6 +2930,8 @@ EOF
   run_case "(u) --skip-cleanup, --phase version-gate: the gate's teardown completes, so nothing labelled is left, only what uninstalling Crossplane leaves" case_u11
   run_case "(u) --skip-cleanup, --phase version-gate: deleting the gate's Provider fails" case_u12
   run_case "(u) --help and exit codes against on_exit's end-of-run text and exit code for each end state" case_u13
+  run_case "(crd) provider CRDs created after the Provider is Healthy: the poll waits for them" case_crd1
+  run_case "(crd) provider CRDs never created: the poll gives up" case_crd2
   run_case "(ca) CUSTOM-ATTR-POWER: out-of-band value reverted, VM still off" case_ca1
   run_case "(ca) CUSTOM-ATTR-POWER: value reverted, but the VM powered on" case_ca2
   run_case "(ca) CUSTOM-ATTR-POWER: out-of-band value not reverted" case_ca3

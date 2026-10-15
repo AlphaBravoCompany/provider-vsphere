@@ -104,6 +104,10 @@ readonly CA_RES_CLUSTER=customattributes.inventory.vsphere.alphabravo.io
 readonly PC_RES_CLUSTER=providerconfigs.vsphere.alphabravo.io
 readonly PC_RES_NS=providerconfigs.vsphere.m.alphabravo.io
 readonly CPC_RES=clusterproviderconfigs.vsphere.m.alphabravo.io
+# The provider CRDs the vm phase uses. With SafeStart, Crossplane creates a provider's CRDs as it
+# activates each ManagedResourceDefinition, which can finish after the Provider reports Healthy.
+readonly PROVIDER_CRDS=("crd/$VM_RES_CLUSTER" "crd/$VM_RES_NS" "crd/$VMFS_RES_CLUSTER" "crd/$CA_RES_CLUSTER"
+  "crd/$PC_RES_CLUSTER" "crd/$PC_RES_NS" "crd/$CPC_RES")
 # The two test VMs use two distinct ProviderConfigs: the cluster one and the namespaced one.
 readonly PROVIDER_CONFIGS_IN_USE=2
 readonly STEADY_MIN_INTERVALS=3
@@ -2455,6 +2459,12 @@ run_ac006_delete() {
   done
 }
 
+# provider_crds_exist: every CRD in PROVIDER_CRDS exists. phase_vm polls this before its
+# Established wait, because kubectl wait fails at once on a CRD that does not exist yet.
+provider_crds_exist() {
+  k get "${PROVIDER_CRDS[@]}" -o name >/dev/null 2>&1
+}
+
 phase_vm() {
   if [[ $EXISTING == true ]]; then
     say "== Crossplane: using the existing installation (no install, upgrade or uninstall)"
@@ -2478,8 +2488,9 @@ phase_vm() {
     diag_provider
     fatal "Provider $PROVIDER_NAME did not become Installed and Healthy within 10m"
   fi
-  k wait --for=condition=Established "crd/$VM_RES_CLUSTER" "crd/$VM_RES_NS" "crd/$VMFS_RES_CLUSTER" \
-    "crd/$CA_RES_CLUSTER" "crd/$PC_RES_CLUSTER" "crd/$PC_RES_NS" "crd/$CPC_RES" --timeout=5m ||
+  poll_until 300 5 "the provider CRDs this run uses exist" provider_crds_exist ||
+    fatal "provider CRDs do not exist within 5m: ${PROVIDER_CRDS[*]}"
+  k wait --for=condition=Established "${PROVIDER_CRDS[@]}" --timeout=5m ||
     fatal "provider CRDs are not established"
   safestart_info
   setup_configs
