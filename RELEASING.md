@@ -152,7 +152,7 @@ Nothing is pushed.
 ## 4. Negative check: publishing without a login fails
 
 ```sh
-docker logout docker.io
+docker logout                           # no argument: Docker Hub (see section 10)
 make publish BRANCH_NAME=main           # must FAIL: unauthorized / authentication required
 crane manifest docker.io/alphabravodevops/provider-vsphere:v2.15.1   # must fail: MANIFEST_UNKNOWN
 git status --porcelain                  # must print nothing: no credential file was written
@@ -455,8 +455,13 @@ done
 ## 10. Log out
 
 ```sh
-docker logout docker.io
+docker logout
+grep -c 'index.docker.io' ~/.docker/config.json   # must print 0
 ```
+
+Run `docker logout` with no argument. The Docker CLI saves the `docker login docker.io` login
+under `https://index.docker.io/v1/`, and `docker logout docker.io` reports "Removing login
+credentials for docker.io" but leaves that entry in place.
 
 ## 11. Provider-only fix release
 
