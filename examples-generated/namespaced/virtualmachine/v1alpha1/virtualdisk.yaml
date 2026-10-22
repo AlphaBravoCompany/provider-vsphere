@@ -1,0 +1,21 @@
+apiVersion: virtualmachine.vsphere.m.alphabravo.io/v1alpha1
+kind: VirtualDisk
+metadata:
+  annotations:
+    meta.upbound.io/example-id: virtualmachine/v1alpha1/virtualdisk
+  labels:
+    testing.upbound.io/example-name: virtual_disk
+  name: virtual-disk
+  namespace: crossplane-system
+spec:
+  forProvider:
+    createDirectories: true
+    datacenterSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datacenter
+    datastoreSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    size: 40
+    type: thin
+    vmdkPath: /foo/foo.vmdk

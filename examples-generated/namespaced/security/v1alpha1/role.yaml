@@ -1,0 +1,17 @@
+apiVersion: security.vsphere.m.alphabravo.io/v1alpha1
+kind: Role
+metadata:
+  annotations:
+    meta.upbound.io/example-id: security/v1alpha1/role
+  labels:
+    testing.upbound.io/example-name: role1
+  name: role1
+  namespace: crossplane-system
+spec:
+  forProvider:
+    name: my_terraform_role
+    rolePrivileges:
+    - Alarm.Acknowledge
+    - Alarm.Create
+    - Datacenter.Create
+    - Datacenter.Move

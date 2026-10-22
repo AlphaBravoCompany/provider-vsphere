@@ -1,0 +1,41 @@
+apiVersion: security.vsphere.m.alphabravo.io/v1alpha1
+kind: EntityPermissions
+metadata:
+  annotations:
+    meta.upbound.io/example-id: security/v1alpha1/entitypermissions
+  labels:
+    testing.upbound.io/example-name: p1
+  name: p1
+  namespace: crossplane-system
+spec:
+  forProvider:
+    entityId: ${data.vsphere_virtual_machine.vm.id}
+    entityType: VirtualMachine
+    permissions:
+    - isGroup: true
+      propagate: true
+      roleId: ${data.vsphere_role.role1.id}
+      userOrGroup: vsphere.local\DCClients
+    - isGroup: true
+      propagate: true
+      roleId: ${vsphere_role.role2.id}
+      userOrGroup: vsphere.local\ExternalIDPUsers
+
+---
+
+apiVersion: security.vsphere.m.alphabravo.io/v1alpha1
+kind: Role
+metadata:
+  annotations:
+    meta.upbound.io/example-id: security/v1alpha1/entitypermissions
+  labels:
+    testing.upbound.io/example-name: role2
+  name: role2
+  namespace: crossplane-system
+spec:
+  forProvider:
+    name: my_terraform_role
+    rolePrivileges:
+    - Alarm.Acknowledge
+    - Alarm.Create
+    - Datacenter.Move

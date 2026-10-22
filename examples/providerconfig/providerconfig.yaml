@@ -1,4 +1,7 @@
-apiVersion: vsphere.upbound.io/v1beta1
+# Cluster-scoped ProviderConfig for cluster-scoped managed resources (*.vsphere.alphabravo.io).
+# A cluster-scoped MR selects it with providerConfigRef: {name: default}.
+# The Secret it reads is examples/providerconfig/secret.yaml.tmpl. Requires Crossplane >= v2.0.0.
+apiVersion: vsphere.alphabravo.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default

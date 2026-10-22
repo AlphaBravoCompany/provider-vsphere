@@ -1,0 +1,15 @@
+# ClusterProviderConfig for namespaced managed resources (*.vsphere.m.alphabravo.io) in any
+# namespace. A namespaced MR that omits providerConfigRef uses the ClusterProviderConfig named
+# "default"; select it explicitly with providerConfigRef: {kind: ClusterProviderConfig, name: default}.
+# The Secret it reads is examples/providerconfig/secret.yaml.tmpl. Requires Crossplane >= v2.0.0.
+apiVersion: vsphere.m.alphabravo.io/v1beta1
+kind: ClusterProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: example-creds
+      namespace: crossplane-system
+      key: credentials
