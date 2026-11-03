@@ -1,0 +1,12 @@
+apiVersion: inventory.vsphere.alphabravo.io/v1alpha1
+kind: CustomAttribute
+metadata:
+  annotations:
+    meta.upbound.io/example-id: inventory/v1alpha1/customattribute
+  labels:
+    testing.upbound.io/example-name: attribute
+  name: attribute
+spec:
+  forProvider:
+    managedObjectType: VirtualMachine
+    name: terraform-test-attribute

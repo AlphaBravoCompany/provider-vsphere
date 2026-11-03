@@ -1,17 +1,14 @@
-# This file controls automatic PR reviewer assignment. See the following docs:
+# This file controls automatic PR reviewer assignment for the AlphaBravo
+# provider-vsphere repository. See the following docs:
 #
 # * https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
-# * https://docs.github.com/en/organizations/organizing-members-into-teams/managing-code-review-settings-for-your-team
 #
-# The goal of this file is for most PRs to automatically and fairly have one
-# maintainer set as PR reviewers. All maintainers have permission to approve 
-# and merge PRs. All PRs must be approved by at least one maintainer before being merged.
-# 
-# Where possible, prefer explicitly specifying a maintainer who is a subject
-# matter expert for a particular part of the codebase rather than using the
-# @upbound/team-extensions group.
+# Every pull request is assigned to the owners below for review. A pull request
+# must be approved by at least one owner before it is merged.
 #
-# See also OWNERS.md for governance details
+# Owners must be GitHub users or teams with write access to this repository;
+# GitHub silently ignores a rule whose owner cannot be resolved. When you add an
+# owner, check that the handle or team slug exists and has access.
 
 # Fallback owners
-*			@ulucinar @sergenyalcin
+*       @jesusfbn

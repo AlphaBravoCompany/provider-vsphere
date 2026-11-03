@@ -1,0 +1,54 @@
+apiVersion: hostandclustermanagement.vsphere.m.alphabravo.io/v1alpha1
+kind: Vnic
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vnic
+  labels:
+    testing.upbound.io/example-name: vnic
+  name: vnic
+  namespace: crossplane-system
+spec:
+  forProvider:
+    distributedPortGroup: ${vsphere_distributed_port_group.pg.id}
+    distributedSwitchPort: ${vsphere_distributed_virtual_switch.vds.id}
+    host: ${data.vsphere_host.host.id}
+    ipv4:
+    - dhcp: true
+    netstack: vmotion
+
+---
+
+apiVersion: networking.vsphere.m.alphabravo.io/v1alpha1
+kind: DistributedPortGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vnic
+  labels:
+    testing.upbound.io/example-name: pg
+  name: pg
+  namespace: crossplane-system
+spec:
+  forProvider:
+    distributedVirtualSwitchUuid: ${vsphere_distributed_virtual_switch.vds.id}
+    name: pg-01
+    vlanId: 1234
+
+---
+
+apiVersion: networking.vsphere.m.alphabravo.io/v1alpha1
+kind: DistributedVirtualSwitch
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/vnic
+  labels:
+    testing.upbound.io/example-name: vds
+  name: vds
+  namespace: crossplane-system
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    host:
+    - devices:
+      - vnic3
+      hostSystemId: ${data.vsphere_host.host.id}
+    name: vds-01

@@ -1,0 +1,58 @@
+apiVersion: storage.vsphere.m.alphabravo.io/v1alpha1
+kind: DatastoreCluster
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/datastorecluster
+  labels:
+    testing.upbound.io/example-name: datastore_cluster
+  name: datastore-cluster
+  namespace: crossplane-system
+spec:
+  forProvider:
+    datacenterId: ${data.vsphere_datacenter.datacenter.id}
+    name: terraform-datastore-cluster-test
+    sdrsEnabled: true
+
+---
+
+apiVersion: storage.vsphere.m.alphabravo.io/v1alpha1
+kind: NasDatastore
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/datastorecluster
+  labels:
+    testing.upbound.io/example-name: datastore1
+  name: datastore1
+  namespace: crossplane-system
+spec:
+  forProvider:
+    datastoreClusterId: ${vsphere_datastore_cluster.datastore_cluster.id}
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-datastore-test1
+    remoteHosts:
+    - nfs
+    remotePath: /export/terraform-test1
+    type: NFS
+
+---
+
+apiVersion: storage.vsphere.m.alphabravo.io/v1alpha1
+kind: NasDatastore
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1alpha1/datastorecluster
+  labels:
+    testing.upbound.io/example-name: datastore2
+  name: datastore2
+  namespace: crossplane-system
+spec:
+  forProvider:
+    datastoreClusterId: ${vsphere_datastore_cluster.datastore_cluster.id}
+    hostSystemIds:
+    - ${data.vsphere_host.hosts.*.id}
+    name: terraform-datastore-test2
+    remoteHosts:
+    - nfs
+    remotePath: /export/terraform-test2
+    type: NFS

@@ -1,0 +1,13 @@
+apiVersion: administration.vsphere.alphabravo.io/v1alpha1
+kind: License
+metadata:
+  annotations:
+    meta.upbound.io/example-id: administration/v1alpha1/license
+  labels:
+    testing.upbound.io/example-name: licenseKey
+  name: licensekey
+spec:
+  forProvider:
+    labels:
+      VpxClientLicenseLabel: example
+    licenseKey: 00000-00000-00000-00000-00000

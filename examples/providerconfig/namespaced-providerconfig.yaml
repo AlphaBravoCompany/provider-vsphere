@@ -1,0 +1,20 @@
+# Namespaced ProviderConfig for namespaced managed resources (*.vsphere.m.alphabravo.io) in the
+# "default" namespace. A namespaced MR must select it explicitly with
+# providerConfigRef: {kind: ProviderConfig, name: default}; omitting providerConfigRef selects the
+# ClusterProviderConfig named "default" instead.
+#
+# The provider always reads this ProviderConfig's Secret from the MR's own namespace:
+# secretRef.namespace is required by the schema but is overwritten with the MR namespace.
+# Keep the Secret (examples/providerconfig/namespaced-secret.yaml.tmpl) in this namespace.
+apiVersion: vsphere.m.alphabravo.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  namespace: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: example-creds
+      namespace: default
+      key: credentials

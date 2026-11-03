@@ -1,0 +1,37 @@
+apiVersion: networking.vsphere.m.alphabravo.io/v1alpha1
+kind: HostPortGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: networking/v1alpha1/hostportgroup
+  labels:
+    testing.upbound.io/example-name: pg
+  name: pg
+  namespace: crossplane-system
+spec:
+  forProvider:
+    hostSystemId: ${data.vsphere_host.host.id}
+    name: portgroup-01
+    virtualSwitchName: vSwitchTerraformTest
+
+---
+
+apiVersion: networking.vsphere.m.alphabravo.io/v1alpha1
+kind: HostVirtualSwitch
+metadata:
+  annotations:
+    meta.upbound.io/example-id: networking/v1alpha1/hostportgroup
+  labels:
+    testing.upbound.io/example-name: host_virtual_switch
+  name: host-virtual-switch
+  namespace: crossplane-system
+spec:
+  forProvider:
+    activeNics:
+    - vmnic0
+    hostSystemId: ${data.vsphere_host.host.id}
+    name: switch-01
+    networkAdapters:
+    - vmnic0
+    - vmnic1
+    standbyNics:
+    - vmnic1

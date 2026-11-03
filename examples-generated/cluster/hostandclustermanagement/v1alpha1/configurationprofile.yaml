@@ -1,0 +1,12 @@
+apiVersion: hostandclustermanagement.vsphere.alphabravo.io/v1alpha1
+kind: ConfigurationProfile
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/configurationprofile
+  labels:
+    testing.upbound.io/example-name: profile1
+  name: profile1
+spec:
+  forProvider:
+    clusterId: ${data.vsphere_compute_cluster.cluster1.id}
+    referenceHostId: ${data.vsphere_host.host.id}

@@ -1,0 +1,82 @@
+apiVersion: hostandclustermanagement.vsphere.m.alphabravo.io/v1alpha1
+kind: ComputeClusterVmHostRule
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/computeclustervmhostrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_host_rule
+  name: cluster-vm-host-rule
+  namespace: crossplane-system
+spec:
+  forProvider:
+    affinityHostGroupName: terraform-test-cluster-host-group
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: terraform-test-cluster-vm-host-rule
+    vmGroupName: terraform-test-cluster-vm-group
+
+---
+
+apiVersion: hostandclustermanagement.vsphere.m.alphabravo.io/v1alpha1
+kind: ComputeClusterHostGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/computeclustervmhostrule
+  labels:
+    testing.upbound.io/example-name: cluster_host_group
+  name: cluster-host-group
+  namespace: crossplane-system
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    hostSystemIds:
+    - ${data.vsphere_host.host.id}
+    name: terraform-test-cluster-vm-group
+
+---
+
+apiVersion: hostandclustermanagement.vsphere.m.alphabravo.io/v1alpha1
+kind: ComputeClusterVmGroup
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/computeclustervmhostrule
+  labels:
+    testing.upbound.io/example-name: cluster_vm_group
+  name: cluster-vm-group
+  namespace: crossplane-system
+spec:
+  forProvider:
+    computeClusterId: ${data.vsphere_compute_cluster.cluster.id}
+    name: terraform-test-cluster-vm-group
+    virtualMachineIds:
+    - ${vsphere_virtual_machine.vm.id}
+
+---
+
+apiVersion: virtualmachine.vsphere.m.alphabravo.io/v1alpha1
+kind: VirtualMachine
+metadata:
+  annotations:
+    meta.upbound.io/example-id: hostandclustermanagement/v1alpha1/computeclustervmhostrule
+  labels:
+    testing.upbound.io/example-name: vm
+  name: vm
+  namespace: crossplane-system
+spec:
+  forProvider:
+    datastoreIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_datastore
+    disk:
+    - label: disk0
+      size: 20
+    guestId: otherLinux64Guest
+    memory: 2048
+    name: terraform-test
+    networkInterface:
+    - networkIdSelector:
+        matchLabels:
+          testing.upbound.io/example-name: vsphere_network
+    numCpus: 2
+    resourcePoolIdSelector:
+      matchLabels:
+        testing.upbound.io/example-name: vsphere_compute_cluster
